@@ -1,6 +1,6 @@
 import { api } from '../lib/links.js';
 
-/** Without these, Firefox never injects the content script and the "." key does nothing at all. */
+/** Without these, the content script is never injected and the "." key does nothing at all. */
 const NEEDED = { origins: ['https://github.com/*', 'https://api.github.com/*'] };
 
 const card = document.getElementById('access-card');
@@ -31,9 +31,9 @@ function render(ok, note) {
     element(
       'p',
       'note',
-      'Firefox treats access to a site as something you grant rather than something an extension ' +
-        'takes, and it has not been granted yet. Until it is, gitchop cannot run on GitHub at all — ' +
-        'pressing the . key will do nothing, with no error to explain why.',
+      'This browser treats access to a site as something you grant rather than something an ' +
+        'extension takes, and it has not been granted yet. Until it is, gitchop cannot run on ' +
+        'GitHub at all — pressing the . key will do nothing, with no error to explain why.',
     ),
   );
 

@@ -1,5 +1,5 @@
 .DS_Store
 .claude/
 
-# Built by dev/package.sh; belongs on a release, not in the tree.
-gitchop.xpi
+# Built by dev/build.mjs; belongs on a release, not in the tree.
+dist/

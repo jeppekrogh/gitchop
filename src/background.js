@@ -385,9 +385,10 @@ api.action.onClicked.addListener(() => {
 });
 
 /**
- * Firefox hands out host permissions on request, not at install, and without them the content
- * script never runs — the "." key simply does nothing, with nothing to explain it. Badge the
- * toolbar icon so that state is visible instead of silent, and point at the page that fixes it.
+ * Firefox hands out host permissions on request rather than at install, and Chrome lets them be
+ * narrowed to "on click" afterwards. Either way the content script then never runs — the "." key
+ * simply does nothing, with nothing to explain it. Badge the toolbar icon so that state is visible
+ * instead of silent, and point at the page that fixes it.
  */
 async function showAccess() {
   let granted = true;

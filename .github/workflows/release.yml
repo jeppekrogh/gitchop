@@ -1,0 +1,71 @@
+name: release
+
+# Tag the commit and the release builds itself:
+#
+#   git tag v2.1.0 && git push origin v2.1.0
+#
+# The store uploads stay manual — both stores want a human to answer review questions — but the
+# files they want are attached to the release, built the same way every time. See dev/RELEASING.md.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Tests
+        run: |
+          node dev/context.test.mjs
+          node dev/repos.test.mjs
+
+      # A tag that disagrees with the manifest ships a package the stores will reject as a duplicate
+      # version, or worse, silently reuses one. Cheaper to stop here.
+      - name: Tag matches the manifest version
+        if: github.ref_type == 'tag'
+        run: |
+          manifest="$(node -p "require('./manifest.json').version")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$manifest" != "$tag" ]; then
+            echo "tag $GITHUB_REF_NAME says $tag, manifest.json says $manifest" >&2
+            exit 1
+          fi
+
+      - name: Build
+        run: node dev/build.mjs all
+
+      - name: Release notes from the changelog
+        id: notes
+        run: |
+          version="$(node -p "require('./manifest.json').version")"
+          {
+            awk -v v="## $version" '$0 == v {found = 1; next} /^## / && found {exit} found' CHANGELOG.md
+            echo
+            echo "| Browser | File | Install |"
+            echo "| --- | --- | --- |"
+            echo "| Firefox | \`gitchop-$version-firefox.xpi\` | [addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/gitchop/) |"
+            echo "| Chrome, Edge, Brave | \`gitchop-$version-chrome.zip\` | unzip, then load unpacked at \`chrome://extensions\` with developer mode on |"
+          } > notes.md
+          cat notes.md
+
+      - name: Publish
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "gitchop $GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            --verify-tag \
+            dist/*.xpi dist/*.zip

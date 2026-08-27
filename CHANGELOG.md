@@ -3,6 +3,25 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
+## 2.1.0
+
+- A Chrome package alongside Firefox, which Edge and Brave take unchanged. Nothing in `src/` is
+  conditional; the two disagree only about the background script, so `dev/build.mjs` derives a
+  manifest per browser from the one in the repo root. Chrome refuses to load a Manifest V3 extension
+  that mentions `background.scripts`, which is why one shared manifest was not enough.
+- Both stores now call the extension "gitchop for GitHub" — consistent with Spacebar Review for
+  GitHub, and findable next to the unrelated service that had the name first. Only the display name
+  changed: the add-on ID, the AMO listing URL and every internal identifier stay as they were, so
+  this arrives as an update rather than a second listing.
+- Tagging a commit builds both packages and attaches them to a GitHub release. Store uploads stay
+  manual; `dev/RELEASING.md` has the steps and what each store asks for.
+- The settings page no longer says "Firefox" when explaining host permissions, since Chrome can have
+  site access narrowed to "on click" and reaches the same card.
+- Packaging now refuses to build when a manifest entry, an options-page `src`, or a relative
+  `import` does not resolve. With no bundler between `src/` and the browser, those only used to
+  surface after installing.
+- `dev/package.sh` is gone; `node dev/build.mjs` replaces it.
+
 ## 2.0.0
 
 - Classic tokens are the recommended path again: one token with `repo` and `gist` covers every

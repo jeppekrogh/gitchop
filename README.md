@@ -4,8 +4,14 @@ Press <kbd>.</kbd> on GitHub for your own links and instant repository search.
 
 **[Install for Firefox](https://addons.mozilla.org/en-US/firefox/addon/gitchop/)**
 
-If the menu does not open, allow access to `github.com` in `about:addons` → gitchop → Permissions,
-then reload the tab. Firefox does not grant that at install.
+Chrome, Edge and Brave: take `gitchop-<version>-chrome.zip` from the
+[latest release](https://github.com/jeppekroghitk/gitchop/releases/latest), unzip it, and load it at
+`chrome://extensions` with developer mode on. Leave the unzipped folder where it is — Chrome derives
+the extension's identity from that path, so moving or renaming it starts over with an empty link list.
+
+If the menu does not open in Firefox, allow access to `github.com` in `about:addons` → gitchop →
+Permissions, then reload the tab — Firefox does not grant that at install. Chrome grants it when you
+install, unless site access has been narrowed to *on click*.
 
 ## Keys
 
@@ -62,12 +68,17 @@ in Settings and every change is written there as a new revision.
 
 ## Development
 
-No build step — the files in `src/` are what runs.
+No build step for the code — the files in `src/` are what runs. Packaging only chooses which
+`manifest.json` each browser gets, since the two disagree about the background script.
 
 ```sh
 node dev/context.test.mjs && node dev/repos.test.mjs   # tests
-./dev/package.sh                                       # build gitchop.xpi, needs only zip
+node dev/build.mjs all                                 # dist/gitchop-<version>-<browser>.<ext>
+node dev/build.mjs chrome --no-zip                     # unpacked, for chrome://extensions
 open dev/harness.html                                  # the menu, without installing
 ```
 
-[Changelog](CHANGELOG.md) · MIT
+The build refuses to package a manifest whose files do not resolve, imports included — with no
+bundler in the way, that is the safety net.
+
+[Releasing](dev/RELEASING.md) · [Changelog](CHANGELOG.md) · MIT
