@@ -73,6 +73,9 @@
       addEventListener('resize', paintPage);
 
       const store = {
+        // Sparks, shake and flash on show, blade classic; override any slider in the URL,
+        // e.g. harness.html?hue=210&tint=70&speed=50.
+        effects: { hue: 0, tint: 0, glow: 50, sparks: 55, shake: 35, flash: 25, speed: 100 },
         links: [
           { id: '1', icon: '🔔', label: 'Notifications', url: 'https://github.com/notifications' },
           { id: '2', icon: '🧩', label: 'Your pull requests', url: 'https://github.com/pulls' },
@@ -113,11 +116,16 @@
         },
       };
 
+      for (const key of Object.keys(store.effects)) {
+        if (params.has(key)) store.effects[key] = Number(params.get(key));
+      }
+
       document.getElementById('chop').addEventListener('click', () => {
         dispatchEvent(new KeyboardEvent('keydown', { key: '.', bubbles: true }));
       });
     </script>
     <script src="../src/content/context.js"></script>
+    <script src="../src/content/effects.js"></script>
     <script src="../src/content/styles.js"></script>
     <script src="../src/content/chop.js"></script>
     <script src="../src/content/menu.js"></script>

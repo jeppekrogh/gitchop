@@ -32,7 +32,30 @@ window.__gitchop = window.__gitchop || {};
     };
   }
 
-  gc.createStage = function createStage({ reduced = false } = {}) {
+  /**
+   * Lightness slides from pure white toward the hue as tint rises, so tint 0 reproduces the
+   * original rgba(255, 255, 255, …) values exactly; `drop` is how far each layer may fall.
+   */
+  function palette({ hue, tint }) {
+    const tone = (drop, alpha) => `hsl(${hue} ${tint}% ${100 - (tint * drop) / 100}% / ${alpha})`;
+    return {
+      '--gc-blade-hi': tone(35, 0.92),
+      '--gc-blade-lo': tone(35, 0.5),
+      '--gc-blade-halo': tone(25, 0.55),
+      '--gc-glint-hi': tone(18, 1),
+      '--gc-glint-mid': tone(18, 0.55),
+      '--gc-bloom-hi': tone(30, 0.26),
+      '--gc-bloom-lo': tone(30, 0.1),
+      '--gc-spark': tone(28, 1),
+      '--gc-spark-halo': tone(28, 0.7),
+      '--gc-flash': tone(15, 1),
+    };
+  }
+
+  gc.createStage = function createStage({ reduced = false, effects } = {}) {
+    const fx = gc.EFFECTS.sanitize(effects);
+    // Every duration and delay in the open sequence is multiplied by this; 100 is the classic pace.
+    const pace = 100 / fx.speed;
     const geo = geometry();
 
     const host = document.createElement('gitchop-root');
@@ -40,6 +63,9 @@ window.__gitchop = window.__gitchop || {};
     host.style.top = '0';
     host.style.left = '0';
     host.style.zIndex = '2147483000';
+    for (const [prop, value] of Object.entries(palette(fx))) {
+      host.style.setProperty(prop, value);
+    }
 
     const shadow = host.attachShadow({ mode: 'closed' });
     const style = document.createElement('style');
@@ -49,17 +75,21 @@ window.__gitchop = window.__gitchop || {};
     const bloom = div('gc-bloom');
     const cut = div('gc-cut');
     const glint = div('gc-glint');
+    const sparks = div('gc-sparks');
+    const flash = div('gc-flash');
     const menuLayer = div('gc-menu-layer');
 
-    for (const line of [cut, bloom]) {
+    for (const line of [cut, bloom, sparks]) {
       line.style.width = `${geo.length}px`;
       line.style.transform = geo.onCut;
     }
+    bloom.style.height = `${Math.round(26 * (0.4 + (1.2 * fx.glow) / 100))}px`;
     glint.style.width = `${GLINT}px`;
     cut.append(glint);
 
-    // The blade sits above the dark but below the menu, so it never crosses the panel.
-    shadow.append(style, scrim, bloom, cut, menuLayer);
+    // The blade sits above the dark but below the menu, so it never crosses the panel; sparks and
+    // flash ride above the blade so they stay visible once the dark is in.
+    shadow.append(style, scrim, bloom, cut, sparks, flash, menuLayer);
     document.documentElement.append(host);
 
     const blockScroll = (event) => event.preventDefault();
@@ -93,6 +123,63 @@ window.__gitchop = window.__gitchop || {};
       return animation;
     }
 
+    /**
+     * The container lies along the cut like the bloom does, so a spark's coordinates are local to
+     * the blade: x runs along it, y is perpendicular. Delays follow the sweep so each spark ignites
+     * roughly as the glint passes its position. No fill — the base style keeps a spark invisible
+     * until its own animation starts.
+     */
+    function throwSparks(sweep) {
+      const count = Math.round(fx.sparks * 1.2);
+      for (let i = 0; i < count; i++) {
+        const progress = Math.random();
+        const spark = div('gc-spark');
+        const size = 1.5 + Math.random() * 1.5;
+        spark.style.width = `${Math.round(size * (2 + Math.random() * 3))}px`;
+        spark.style.height = `${size.toFixed(1)}px`;
+        spark.style.left = `${Math.round(geo.length * (1 - progress))}px`;
+        sparks.append(spark);
+
+        const along = -(10 + Math.random() * 90);
+        const out = (Math.random() < 0.5 ? -1 : 1) * (12 + Math.random() * 70);
+        const fall = 30 + Math.random() * 60;
+        const flight = spark.animate(
+          [
+            { transform: 'translate(0px, 0px)', opacity: 1 },
+            { transform: `translate(${(along * 0.6).toFixed(1)}px, ${(out * 0.75).toFixed(1)}px)`, opacity: 0.9, offset: 0.55 },
+            { transform: `translate(${along.toFixed(1)}px, ${(out + fall).toFixed(1)}px)`, opacity: 0 },
+          ],
+          {
+            duration: (350 + Math.random() * 450) * pace,
+            delay: sweep * progress * (0.8 + Math.random() * 0.25),
+            easing: EASE_SOFT,
+          },
+        );
+        flight.finished.then(() => spark.remove()).catch(() => {});
+      }
+    }
+
+    /**
+     * The page recoils rather than the overlay: the host is a child of <html>, and a transform on
+     * an ancestor of a fixed-position element re-anchors it to the document — on a scrolled page
+     * that would fling the overlay off-screen. Shaking <body> leaves the host alone, so the blade
+     * holds still while the page shudders under it.
+     */
+    function recoil(sweep) {
+      const amplitude = (fx.shake / 100) * 16;
+      const frames = [{ transform: 'translate(0px, 0px)' }];
+      for (let i = 0; i < 7; i++) {
+        const reach = amplitude * (1 - i / 7) ** 1.5;
+        const angle = Math.random() * Math.PI * 2;
+        frames.push({
+          transform: `translate(${(Math.cos(angle) * reach).toFixed(1)}px, ${(Math.sin(angle) * reach).toFixed(1)}px)`,
+        });
+      }
+      frames.push({ transform: 'translate(0px, 0px)' });
+      const shake = document.body.animate(frames, { duration: 340 * pace, delay: sweep * 0.45, easing: 'linear' });
+      shake.finished.then(() => shake.cancel()).catch(() => {});
+    }
+
     const stage = {
       host,
       shadow,
@@ -103,30 +190,48 @@ window.__gitchop = window.__gitchop || {};
         const dark = track(
           scrim,
           [{ opacity: 0 }, { opacity: 1 }],
-          { duration: reduced ? 120 : DARK_IN, delay: reduced ? 0 : DARK_AT, easing: 'ease-out' },
+          { duration: reduced ? 120 : DARK_IN * pace, delay: reduced ? 0 : DARK_AT * pace, easing: 'ease-out' },
           ['opacity'],
         );
         if (reduced) return dark.finished.catch(() => {});
 
+        const sweep = SWEEP * pace;
         for (const line of [cut, bloom]) {
           once(line, [{ clipPath: geo.closed }, { clipPath: geo.open }], {
-            duration: SWEEP,
+            duration: sweep,
             easing: EASE_BLADE,
           });
         }
         once(cut, [{ opacity: 0 }, { opacity: 1, offset: 0.08 }, { opacity: 1, offset: 0.62 }, { opacity: 0 }], {
-          duration: SWEEP + 200,
+          duration: sweep + 200 * pace,
           easing: 'linear',
         });
-        once(bloom, [{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 0.75, offset: 0.62 }, { opacity: 0 }], {
-          duration: SWEEP + 230,
-          easing: 'linear',
-        });
+        const bloomPeak = Math.min(1, fx.glow / 50);
+        once(
+          bloom,
+          [
+            { opacity: 0 },
+            { opacity: bloomPeak, offset: 0.12 },
+            { opacity: bloomPeak * 0.75, offset: 0.62 },
+            { opacity: 0 },
+          ],
+          { duration: sweep + 230 * pace, easing: 'linear' },
+        );
         // Right to left: the glint's leading (left) edge tracks the clip boundary exactly.
         once(glint, [{ transform: `translateX(${geo.length}px)` }, { transform: 'translateX(0px)' }], {
-          duration: SWEEP,
+          duration: sweep,
           easing: EASE_BLADE,
         });
+
+        if (fx.sparks > 0) throwSparks(sweep);
+        if (fx.shake > 0) recoil(sweep);
+        if (fx.flash > 0) {
+          once(flash, [{ opacity: 0 }, { opacity: (fx.flash / 100) * 0.85, offset: 0.2 }, { opacity: 0 }], {
+            duration: 320 * pace,
+            delay: sweep * 0.4,
+            easing: 'ease-out',
+          });
+        }
 
         return dark.finished.catch(() => {});
       },
@@ -139,7 +244,7 @@ window.__gitchop = window.__gitchop || {};
             { opacity: 0, transform: 'translateY(8px) scale(0.99)' },
             { opacity: 1, transform: 'none' },
           ],
-          { duration: reduced ? 120 : 200, easing: EASE_SOFT, delay: reduced ? 0 : DARK_AT + 45 },
+          { duration: reduced ? 120 : 200, easing: EASE_SOFT, delay: reduced ? 0 : (DARK_AT + 45) * pace },
           ['opacity', 'transform'],
         ).finished.catch(() => {});
       },

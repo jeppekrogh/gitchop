@@ -41,6 +41,22 @@ window.__gitchop = window.__gitchop || {};
     }
   }
 
+  // The chop must start the instant the key goes down, so the effect settings are read once up
+  // front and kept fresh, never awaited in the keypress path.
+  let effects = gc.EFFECTS.sanitize();
+  (async () => {
+    try {
+      const stored = await api.storage.sync.get(gc.EFFECTS.KEY);
+      effects = gc.EFFECTS.sanitize(stored[gc.EFFECTS.KEY]);
+    } catch {
+      /* the defaults already loaded */
+    }
+  })();
+  api.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'sync' || !changes[gc.EFFECTS.KEY]) return;
+    effects = gc.EFFECTS.sanitize(changes[gc.EFFECTS.KEY].newValue);
+  });
+
   function onResize() {
     if (state.open) closeChop();
   }
@@ -51,7 +67,7 @@ window.__gitchop = window.__gitchop || {};
     state.lastFocus = deepActiveElement();
 
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const stage = gc.createStage({ reduced });
+    const stage = gc.createStage({ reduced, effects });
     state.stage = stage;
     stage.chop();
     window.addEventListener('resize', onResize);

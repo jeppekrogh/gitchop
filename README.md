@@ -30,6 +30,14 @@ install, unless site access has been narrowed to *on click*.
 
 This takes over GitHub's own <kbd>.</kbd> shortcut, which normally opens github.dev.
 
+## The chop
+
+The opening animation can be tuned in Settings: hue and tint of the blade, glow, sparks, screen
+shake, an impact flash, and the speed of the whole thing, each on its own slider. **Preview chop**
+plays the result over the settings page before you leave it. The defaults are the classic
+steel-white cut, and `prefers-reduced-motion` keeps everything to a plain fade no matter the
+sliders.
+
 ## Links
 
 Add links in Settings. A URL can contain placeholders, filled in from the page you are on, so that

@@ -15,6 +15,7 @@
       "matches": ["https://github.com/*"],
       "js": [
         "src/content/context.js",
+        "src/content/effects.js",
         "src/content/styles.js",
         "src/content/chop.js",
         "src/content/menu.js",

@@ -10,6 +10,16 @@ window.__gitchop.CSS = `
   --gc-text: #e8edf2;
   --gc-dim: #7d8894;
   --gc-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --gc-blade-hi: rgba(255, 255, 255, 0.92);
+  --gc-blade-lo: rgba(255, 255, 255, 0.5);
+  --gc-blade-halo: rgba(255, 255, 255, 0.55);
+  --gc-glint-hi: #fff;
+  --gc-glint-mid: rgba(255, 255, 255, 0.55);
+  --gc-bloom-hi: rgba(255, 255, 255, 0.26);
+  --gc-bloom-lo: rgba(255, 255, 255, 0.1);
+  --gc-spark: #fff;
+  --gc-spark-halo: rgba(255, 255, 255, 0.7);
+  --gc-flash: #fff;
 }
 
 * {
@@ -43,15 +53,15 @@ window.__gitchop.CSS = `
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.5));
-  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.55));
+  background: linear-gradient(90deg, var(--gc-blade-hi), var(--gc-blade-lo));
+  filter: drop-shadow(0 0 6px var(--gc-blade-halo));
 }
 
 .gc-glint {
   position: absolute;
   top: -3px;
   bottom: -3px;
-  background: linear-gradient(90deg, #fff, #fff 12%, rgba(255, 255, 255, 0.55) 55%, transparent);
+  background: linear-gradient(90deg, var(--gc-glint-hi), var(--gc-glint-hi) 12%, var(--gc-glint-mid) 55%, transparent);
 }
 
 .gc-bloom {
@@ -61,8 +71,32 @@ window.__gitchop.CSS = `
   height: 26px;
   opacity: 0;
   pointer-events: none;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.1));
+  background: linear-gradient(90deg, var(--gc-bloom-hi), var(--gc-bloom-lo));
   filter: blur(11px);
+}
+
+.gc-sparks {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  height: 0;
+  pointer-events: none;
+}
+
+.gc-spark {
+  position: absolute;
+  top: -1px;
+  opacity: 0;
+  background: var(--gc-spark);
+  box-shadow: 0 0 6px var(--gc-spark-halo);
+}
+
+.gc-flash {
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 45%, var(--gc-flash), transparent 70%);
 }
 
 .gc-panel {

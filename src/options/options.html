@@ -38,6 +38,14 @@
 
       <section class="card">
         <div class="card-head">
+          <h2>Chop effect</h2>
+          <span class="status" id="effects-status" role="status" aria-live="polite"></span>
+        </div>
+        <div id="effects"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
           <h2>GitHub token</h2>
           <span class="status" id="sync-status" role="status" aria-live="polite"></span>
         </div>
@@ -68,6 +76,10 @@
       </footer>
     </main>
 
+    <!-- The stage the content script uses on GitHub, loaded here so Preview plays the real thing. -->
+    <script src="../content/effects.js"></script>
+    <script src="../content/styles.js"></script>
+    <script src="../content/chop.js"></script>
     <script type="module" src="options.js"></script>
   </body>
 </html>

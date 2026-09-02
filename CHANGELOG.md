@@ -3,6 +3,13 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
+## Unreleased
+
+- The chop can be tuned in Settings: hue and tint of the blade, glow, sparks, screen shake, an
+  impact flash and playback speed, each on its own slider, with a **Preview chop** button that plays
+  the result over the settings page itself. The defaults reproduce the effect exactly as it was, and
+  `prefers-reduced-motion` still collapses everything to a plain fade regardless of the sliders.
+
 ## 2.1.0
 
 - A Chrome package alongside Firefox, which Edge and Brave take unchanged. Nothing in `src/` is

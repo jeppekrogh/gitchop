@@ -12,6 +12,7 @@ import {
 import { load as loadSync, watch as watchSync } from './sync.js';
 import { load as loadIndex } from './repo-index.js';
 import { load as loadAccess, watch as watchAccess } from './access.js';
+import { load as loadEffects } from './effects-card.js';
 
 const rowsEl = document.getElementById('rows');
 const statusEl = document.getElementById('status');
@@ -189,6 +190,7 @@ links = await loadLinks();
 lastWritten = JSON.stringify(links);
 render();
 renderTokens();
+await loadEffects();
 watchAccess();
 await loadAccess();
 // A token appearing or disappearing changes what the index card can offer.
