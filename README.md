@@ -83,7 +83,7 @@ No build step for the code — the files in `src/` are what runs. Packaging only
 node dev/context.test.mjs && node dev/repos.test.mjs   # tests
 node dev/build.mjs all                                 # dist/gitchop-<version>-<browser>.<ext>
 node dev/build.mjs chrome --no-zip                     # unpacked, for chrome://extensions
-open dev/harness.html                                  # the menu, without installing
+open dev/harness.html                                  # the menu and effect sliders, without installing
 ```
 
 The build refuses to package a manifest whose files do not resolve, imports included — with no

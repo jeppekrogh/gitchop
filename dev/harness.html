@@ -14,6 +14,15 @@
         background: rgba(255,255,255,.9); border: 1px solid #d0d7de; padding: 8px 10px;
       }
       #tools input { width: 120px; }
+      #fx {
+        position: fixed; bottom: 12px; right: 12px; z-index: 10;
+        display: grid; gap: 7px;
+        font: 12px ui-monospace, monospace; color: #24292f;
+        background: rgba(255,255,255,.9); border: 1px solid #d0d7de; padding: 10px 12px;
+      }
+      #fx b { font-weight: 600; letter-spacing: 0.04em; }
+      #fx label { display: grid; grid-template-columns: 52px 130px 30px; gap: 8px; align-items: center; }
+      #fx output { text-align: right; }
     </style>
   </head>
   <body>
@@ -23,18 +32,30 @@
       <button id="chop">chop (or press .)</button>
       <input id="typehere" placeholder="typing here = no chop" />
     </div>
+    <!-- The settings page needs a real extension context, so the Settings row cannot open it here;
+         these sliders stand in for its Chop effect card, writing to the same (fake) store. -->
+    <div id="fx">
+      <b>chop effect</b>
+    </div>
 
     <script>
       const params = new URLSearchParams(location.search);
       const SLOW = Number(params.get('slow') || 1);
+      const FREEZE = Number(params.get('freeze') || 0);
 
-      if (SLOW !== 1) {
+      if (SLOW !== 1 || FREEZE) {
         const native = Element.prototype.animate;
         Element.prototype.animate = function (keyframes, options) {
           const scaled = typeof options === 'number'
             ? options * SLOW
             : { ...options, duration: (options.duration ?? 0) * SLOW, delay: (options.delay ?? 0) * SLOW };
-          return native.call(this, keyframes, scaled);
+          const animation = native.call(this, keyframes, scaled);
+          // ?freeze=200 pins every animation at that instant — a still of the chop mid-flight.
+          if (FREEZE) {
+            animation.pause();
+            animation.currentTime = FREEZE;
+          }
+          return animation;
         };
       }
 
@@ -86,11 +107,20 @@
         ],
       };
 
+      const storageListeners = [];
       window.browser = window.chrome = {
         runtime: {
           lastError: undefined,
           async sendMessage(message) {
             document.getElementById('state').textContent = `msg: ${message.type}`;
+            if (message.type === 'gitchop:options') {
+              document.getElementById('state').textContent = 'settings: the sliders, bottom right';
+              document.getElementById('fx').animate(
+                [{ boxShadow: '0 0 0 3px #0969da' }, { boxShadow: '0 0 0 3px rgba(9, 105, 218, 0)' }],
+                { duration: 1400, easing: 'ease-out' },
+              );
+              return { ok: true };
+            }
             if (message.type !== 'gitchop:repos') return { ok: true };
             await new Promise((done) => setTimeout(done, 260));
             if (params.get('search') === 'fail') return { ok: false, error: 'GitHub rate-limited the search.' };
@@ -110,9 +140,17 @@
         storage: {
           sync: {
             get: async () => JSON.parse(JSON.stringify(store)),
-            set: async (patch) => Object.assign(store, patch),
+            // Notifies like the real API, so the content script's effects cache follows the sliders.
+            set: async (patch) => {
+              const changes = {};
+              for (const [key, value] of Object.entries(patch)) {
+                changes[key] = { oldValue: store[key], newValue: value };
+              }
+              Object.assign(store, patch);
+              for (const listener of storageListeners) listener(changes, 'sync');
+            },
           },
-          onChanged: { addListener() {} },
+          onChanged: { addListener: (listener) => storageListeners.push(listener) },
         },
       };
 
@@ -130,5 +168,31 @@
     <script src="../src/content/chop.js"></script>
     <script src="../src/content/menu.js"></script>
     <script src="../src/content/main.js"></script>
+    <script>
+      const fxRows = document.getElementById('fx');
+      for (const spec of window.__gitchop.EFFECTS.SLIDERS) {
+        const row = document.createElement('label');
+        row.title = spec.hint;
+        const name = document.createElement('span');
+        name.textContent = spec.label.toLowerCase();
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = String(spec.min);
+        input.max = String(spec.max);
+        input.step = '1';
+        input.value = String(store.effects[spec.id] ?? spec.value);
+        const value = document.createElement('output');
+        value.textContent = input.value;
+        input.addEventListener('input', () => {
+          value.textContent = input.value;
+          browser.storage.sync.set({ effects: { ...store.effects, [spec.id]: Number(input.value) } });
+        });
+        row.append(name, input, value);
+        fxRows.append(row);
+      }
+
+      // harness.html?autochop&hue=210&tint=80 chops on load, so a reload replays the effect.
+      if (params.has('autochop')) document.getElementById('chop').click();
+    </script>
   </body>
 </html>
