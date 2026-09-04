@@ -126,33 +126,36 @@ window.__gitchop = window.__gitchop || {};
 
     /**
      * The container lies along the cut like the bloom does, so a spark's coordinates are local to
-     * the blade: x runs along it, y is perpendicular. Delays follow the sweep so each spark ignites
-     * roughly as the glint passes its position. No fill — the base style keeps a spark invisible
-     * until its own animation starts.
+     * the blade: x runs along it, y is perpendicular. Each spark ignites just as the glint passes
+     * its position (never before) and is kicked backwards along the cut — the blade travels toward
+     * local x = 0 — in a tight perpendicular band with a short life, so the trail hugs the slice
+     * and dies out just behind the blade instead of littering the whole screen. Energy makes the
+     * trail fiercer, not wider. No fill — the base style keeps a spark invisible until its own
+     * animation starts.
      */
     function throwSparks(sweep) {
       const energy = fx.sparkEnergy;
       for (let i = 0; i < fx.sparkCount; i++) {
         const progress = Math.random();
         const spark = div('gc-spark');
-        const size = (1.5 + Math.random() * 1.5) * energy;
-        spark.style.width = `${Math.round(size * (2 + Math.random() * 3))}px`;
+        const size = (1.2 + Math.random() * 1.3) * energy;
+        spark.style.width = `${Math.round(size * (3 + Math.random() * 4))}px`;
         spark.style.height = `${size.toFixed(1)}px`;
         spark.style.left = `${Math.round(geo.length * (1 - progress))}px`;
         sparks.append(spark);
 
-        const along = -(10 + Math.random() * 90) * energy;
-        const out = (Math.random() < 0.5 ? -1 : 1) * (12 + Math.random() * 70) * energy;
-        const fall = (30 + Math.random() * 60) * energy;
+        const along = (20 + Math.random() * 90) * energy * 0.6;
+        const out = (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 18) * (1 + (energy - 1) * 0.4);
+        const fall = 8 + Math.random() * 22;
         const flight = spark.animate(
           [
             { transform: 'translate(0px, 0px)', opacity: 1 },
-            { transform: `translate(${(along * 0.6).toFixed(1)}px, ${(out * 0.75).toFixed(1)}px)`, opacity: 0.9, offset: 0.55 },
+            { transform: `translate(${(along * 0.6).toFixed(1)}px, ${(out * 0.7).toFixed(1)}px)`, opacity: 0.9, offset: 0.55 },
             { transform: `translate(${along.toFixed(1)}px, ${(out + fall).toFixed(1)}px)`, opacity: 0 },
           ],
           {
-            duration: (350 + Math.random() * 450) * (0.55 + 0.45 * energy) * pace,
-            delay: sweep * progress * (0.8 + Math.random() * 0.25),
+            duration: (160 + Math.random() * 240) * (0.75 + 0.25 * energy) * pace,
+            delay: sweep * progress * (1 + Math.random() * 0.08),
             easing: EASE_SOFT,
           },
         );
