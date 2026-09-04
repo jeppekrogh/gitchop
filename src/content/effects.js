@@ -4,11 +4,29 @@ window.__gitchop = window.__gitchop || {};
   const gc = window.__gitchop;
 
   /**
-   * One entry per slider on the settings page; `value` is the default. The defaults reproduce the
-   * effect exactly as it shipped before it was configurable, so nothing changes until a slider moves.
+   * The colour control is this row of named chips rather than a hue slider — a swatch you can see
+   * beats a number of degrees. The stored value is still a hue (steel is the special 0), so any
+   * hue that arrives from elsewhere keeps working; these are just the ones the page offers.
+   */
+  const SWATCHES = [
+    { name: 'steel', value: 0 },
+    { name: 'crimson', value: 360 },
+    { name: 'ember', value: 25 },
+    { name: 'gold', value: 48 },
+    { name: 'emerald', value: 140 },
+    { name: 'cyan', value: 180 },
+    { name: 'azure', value: 210 },
+    { name: 'violet', value: 275 },
+    { name: 'pink', value: 320 },
+  ];
+
+  /**
+   * One entry per control on the settings page; `value` is the default. The defaults reproduce the
+   * effect exactly as it shipped before it was configurable, so nothing changes until a control
+   * moves. An entry with `swatches` renders as chips instead of a slider.
    */
   const SLIDERS = [
-    { id: 'colour', label: 'Colour', min: 0, max: 360, value: 0, hint: 'The left end is the classic steel; anywhere else paints the blade, sparks and flash that colour.' },
+    { id: 'colour', label: 'Colour', min: 0, max: 360, value: 0, swatches: SWATCHES, hint: 'Steel is the classic blade; any other swatch paints the blade, sparks and flash.' },
     { id: 'epicness', label: 'Epicness', min: 0, max: 100, value: 0, hint: 'From a clean quiet cut to a full action scene: more glow, then sparks, then a flash of light, and finally the screen shakes.' },
     { id: 'speed', label: 'Speed', min: 25, max: 200, value: 100, hint: '100 is the classic pace; lower is slow motion.' },
   ];
@@ -51,5 +69,5 @@ window.__gitchop = window.__gitchop || {};
     };
   }
 
-  gc.EFFECTS = { KEY: 'effects', SLIDERS, DEFAULTS, sanitize, resolve };
+  gc.EFFECTS = { KEY: 'effects', SLIDERS, SWATCHES, DEFAULTS, sanitize, resolve };
 })();

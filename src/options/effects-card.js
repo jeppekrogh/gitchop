@@ -16,7 +16,7 @@ let saveTimer = null;
 let lastWritten = '';
 let statusTimer = null;
 let stage = null;
-const inputs = new Map();
+const updaters = new Map();
 
 function flash(text) {
   statusEl.textContent = text;
@@ -47,20 +47,68 @@ function scheduleCommit() {
 }
 
 function shown(spec, value) {
-  if (spec.id === 'colour') return value === 0 ? 'steel' : `${value}°`;
+  if (spec.swatches) return spec.swatches.find((swatch) => swatch.value === value)?.name ?? `${value}°`;
   if (spec.id === 'speed') return `${value}%`;
   return String(value);
 }
 
 function reflect() {
-  for (const spec of SLIDERS) {
-    const { input, output } = inputs.get(spec.id);
-    input.value = String(effects[spec.id]);
-    output.textContent = shown(spec, effects[spec.id]);
+  for (const update of updaters.values()) update();
+}
+
+function chipColour(value) {
+  return value === 0 ? '#f2f5f8' : `hsl(${value} 75% 60%)`;
+}
+
+function buildSwatches(spec) {
+  const row = document.createElement('div');
+  row.className = 'slider';
+  row.title = spec.hint;
+
+  const label = document.createElement('span');
+  label.className = 'slider-label';
+  label.textContent = spec.label;
+
+  const chips = document.createElement('div');
+  chips.className = 'swatches';
+  chips.setAttribute('role', 'radiogroup');
+  chips.setAttribute('aria-label', spec.label);
+
+  const output = document.createElement('output');
+
+  const buttons = new Map();
+  for (const swatch of spec.swatches) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'swatch';
+    chip.style.background = chipColour(swatch.value);
+    chip.title = swatch.name;
+    chip.setAttribute('role', 'radio');
+    chip.setAttribute('aria-label', swatch.name);
+    chip.addEventListener('click', () => {
+      effects[spec.id] = swatch.value;
+      reflect();
+      commit();
+    });
+    buttons.set(swatch.value, chip);
+    chips.append(chip);
   }
+
+  updaters.set(spec.id, () => {
+    for (const [value, chip] of buttons) {
+      const selected = value === effects[spec.id];
+      chip.dataset.selected = String(selected);
+      chip.setAttribute('aria-checked', String(selected));
+    }
+    output.textContent = shown(spec, effects[spec.id]);
+  });
+  row.append(label, chips, output);
+  return row;
 }
 
 function buildSlider(spec) {
+  if (spec.swatches) return buildSwatches(spec);
+
   const row = document.createElement('div');
   row.className = 'slider';
   row.title = spec.hint;
@@ -75,7 +123,6 @@ function buildSlider(spec) {
   input.min = String(spec.min);
   input.max = String(spec.max);
   input.step = '1';
-  if (spec.id === 'colour') input.className = 'range-colour';
 
   const output = document.createElement('output');
   output.htmlFor = input.id;
@@ -87,7 +134,10 @@ function buildSlider(spec) {
   });
   input.addEventListener('change', commit);
 
-  inputs.set(spec.id, { input, output });
+  updaters.set(spec.id, () => {
+    input.value = String(effects[spec.id]);
+    output.textContent = shown(spec, effects[spec.id]);
+  });
   row.append(label, input, output);
   return row;
 }
@@ -126,9 +176,9 @@ function render() {
   const note = document.createElement('p');
   note.className = 'note';
   note.textContent =
-    'How the page is chopped open when you press the dot. Colour paints the blade, epicness turns ' +
+    'How the page is chopped open when you press the dot. A swatch paints the blade, epicness turns ' +
     'one clean cut into a full action scene, and speed slows the whole thing down or hurries it. ' +
-    'Every slider saves as you let go, and Preview plays the result right here.';
+    'Changes save on their own, and Preview plays the result right here.';
 
   const sliders = document.createElement('div');
   sliders.className = 'sliders';

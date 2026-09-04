@@ -39,6 +39,22 @@ const painted = EFFECTS.resolve({ colour: 210 });
 assert.equal(painted.hue, 210);
 assert.ok(painted.tint > 0, 'any colour above zero tints the blade');
 
+// The colour control is named swatches, each a distinct, valid, visible choice.
+const colourSpec = EFFECTS.SLIDERS.find((slider) => slider.id === 'colour');
+assert.equal(colourSpec.swatches, EFFECTS.SWATCHES, 'the colour control renders the shared swatches');
+assert.ok(EFFECTS.SWATCHES.length >= 6, 'a real choice of swatches');
+assert.deepEqual(EFFECTS.SWATCHES[0], { name: 'steel', value: 0 }, 'steel leads and is the default');
+const seenValues = new Set();
+for (const swatch of EFFECTS.SWATCHES) {
+  assert.ok(swatch.name && typeof swatch.name === 'string', 'every swatch has a name to show');
+  assert.ok(!seenValues.has(swatch.value), `${swatch.name} is a distinct colour`);
+  seenValues.add(swatch.value);
+  assert.equal(EFFECTS.sanitize({ colour: swatch.value }).colour, swatch.value, `${swatch.name} survives sanitize`);
+  const tinted = EFFECTS.resolve({ colour: swatch.value });
+  if (swatch.value === 0) assert.equal(tinted.tint, 0, 'steel stays untinted');
+  else assert.ok(tinted.tint > 0, `${swatch.name} tints the blade`);
+}
+
 // The dial is staged: glow and sparks lead, the flash joins from the middle, the shake last.
 const early = EFFECTS.resolve({ epicness: 20 });
 assert.ok(early.bloomHeight > calm.bloomHeight, 'glow grows from the first stretch');

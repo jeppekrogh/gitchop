@@ -21,8 +21,11 @@
         background: rgba(255,255,255,.9); border: 1px solid #d0d7de; padding: 10px 12px;
       }
       #fx b { font-weight: 600; letter-spacing: 0.04em; }
-      #fx label { display: grid; grid-template-columns: 64px 130px 34px; gap: 8px; align-items: center; }
+      #fx .fxrow { display: grid; grid-template-columns: 64px 140px 52px; gap: 8px; align-items: center; }
       #fx output { text-align: right; }
+      #fx .chips { display: flex; gap: 4px; }
+      #fx .chips button { width: 14px; height: 14px; padding: 0; border: 1px solid #d0d7de; cursor: pointer; }
+      #fx .chips button[data-selected="true"] { outline: 2px solid #0969da; outline-offset: 1px; }
     </style>
   </head>
   <body>
@@ -171,23 +174,51 @@
     <script>
       const fxRows = document.getElementById('fx');
       for (const spec of window.__gitchop.EFFECTS.SLIDERS) {
-        const row = document.createElement('label');
+        // A <label> would forward every click to its first button, so swatch rows are plain divs.
+        const row = document.createElement(spec.swatches ? 'div' : 'label');
+        row.className = 'fxrow';
         row.title = spec.hint;
         const name = document.createElement('span');
         name.textContent = spec.label.toLowerCase();
-        const input = document.createElement('input');
-        input.type = 'range';
-        input.min = String(spec.min);
-        input.max = String(spec.max);
-        input.step = '1';
-        input.value = String(store.effects[spec.id] ?? spec.value);
         const value = document.createElement('output');
-        value.textContent = input.value;
-        input.addEventListener('input', () => {
+
+        if (spec.swatches) {
+          const chips = document.createElement('div');
+          chips.className = 'chips';
+          const mark = () => {
+            for (const chip of chips.children) {
+              chip.dataset.selected = String(Number(chip.dataset.value) === store.effects[spec.id]);
+            }
+            const current = spec.swatches.find((swatch) => swatch.value === store.effects[spec.id]);
+            value.textContent = current ? current.name : `${store.effects[spec.id]}°`;
+          };
+          for (const swatch of spec.swatches) {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.title = swatch.name;
+            chip.dataset.value = String(swatch.value);
+            chip.style.background = swatch.value === 0 ? '#f2f5f8' : `hsl(${swatch.value} 75% 60%)`;
+            chip.addEventListener('click', () => {
+              browser.storage.sync.set({ effects: { ...store.effects, [spec.id]: swatch.value } }).then(mark);
+            });
+            chips.append(chip);
+          }
+          mark();
+          row.append(name, chips, value);
+        } else {
+          const input = document.createElement('input');
+          input.type = 'range';
+          input.min = String(spec.min);
+          input.max = String(spec.max);
+          input.step = '1';
+          input.value = String(store.effects[spec.id] ?? spec.value);
           value.textContent = input.value;
-          browser.storage.sync.set({ effects: { ...store.effects, [spec.id]: Number(input.value) } });
-        });
-        row.append(name, input, value);
+          input.addEventListener('input', () => {
+            value.textContent = input.value;
+            browser.storage.sync.set({ effects: { ...store.effects, [spec.id]: Number(input.value) } });
+          });
+          row.append(name, input, value);
+        }
         fxRows.append(row);
       }
 

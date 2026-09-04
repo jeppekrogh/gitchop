@@ -5,12 +5,13 @@ it from.
 
 ## Unreleased
 
-- The chop can be tuned in Settings with three sliders: **Colour** paints the blade (the left end is
-  the classic steel), **Epicness** is one dial from a clean quiet cut to a full action scene — the
-  glow deepens first, then sparks fly, then a flash of light, and finally the screen shakes — and
-  **Speed** runs from slow motion to double pace. A **Preview chop** button plays the result over
-  the settings page itself. The defaults reproduce the effect exactly as it was, and
-  `prefers-reduced-motion` still collapses everything to a plain fade regardless of the sliders.
+- The chop can be tuned in Settings: **Colour** is a row of named swatches (steel is the classic
+  blade, any other paints the blade, sparks and flash), **Epicness** is one dial from a clean quiet
+  cut to a full action scene — the glow deepens first, then sparks fly, then a flash of light, and
+  finally the screen shakes — and **Speed** runs from slow motion to double pace. A **Preview chop**
+  button plays the result over the settings page itself. The defaults reproduce the effect exactly
+  as it was, and `prefers-reduced-motion` still collapses everything to a plain fade regardless of
+  the settings.
 
 ## 2.1.0
 
