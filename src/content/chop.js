@@ -163,8 +163,10 @@ window.__gitchop = window.__gitchop || {};
     /**
      * The page recoils rather than the overlay: the host is a child of <html>, and a transform on
      * an ancestor of a fixed-position element re-anchors it to the document — on a scrolled page
-     * that would fling the overlay off-screen. Shaking <body> leaves the host alone, so the blade
-     * holds still while the page shudders under it.
+     * that would fling the overlay off-screen. But the scrim is near-opaque before the shake is
+     * halfway done, and a hidden shake reads as no shake at all, so the menu layer rattles on the
+     * same frames: the page carries the impact while it is still lit, the arriving panel carries
+     * it on through the dark.
      */
     function recoil(sweep) {
       const amplitude = fx.shakeAmplitude;
@@ -178,12 +180,11 @@ window.__gitchop = window.__gitchop || {};
         });
       }
       frames.push({ transform: 'translate(0px, 0px)' });
-      const shake = document.body.animate(frames, {
-        duration: (300 + 4 * amplitude) * pace,
-        delay: sweep * 0.45,
-        easing: 'linear',
-      });
-      shake.finished.then(() => shake.cancel()).catch(() => {});
+      const options = { duration: (300 + 6 * amplitude) * pace, delay: sweep * 0.45, easing: 'linear' };
+      for (const target of [document.body, menuLayer]) {
+        const shake = target.animate(frames, options);
+        shake.finished.then(() => shake.cancel()).catch(() => {});
+      }
     }
 
     const stage = {
