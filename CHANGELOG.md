@@ -9,9 +9,10 @@ it from.
   blade, any other paints the blade, sparks and flash), **Epicness** is one dial from a clean quiet
   cut to a full action scene — the glow deepens first, then sparks fly, then a flash of light — and
   **Speed** runs from slow motion to double pace. A **Preview chop**
-  button plays the result over the settings page itself. The defaults reproduce the effect exactly
-  as it was, and `prefers-reduced-motion` still collapses everything to a plain fade regardless of
-  the settings.
+  button plays the result over the settings page itself. The defaults keep the classic look, with
+  one timing change: the cut now finishes before the page darkens and the menu arrives, where the
+  dark used to start mid-sweep. `prefers-reduced-motion` still collapses everything to a plain fade
+  regardless of the settings.
 
 ## 2.1.0
 

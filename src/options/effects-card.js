@@ -156,7 +156,7 @@ function preview() {
   stage = running;
 
   // Long enough to see the dark settle — and the last ember die, when sparks are on.
-  const linger = setTimeout(close, Math.max(320, play.sparkCount > 0 ? 1500 : 0) * pace + 600);
+  const linger = setTimeout(close, Math.max(380, play.sparkCount > 0 ? 1500 : 0) * pace + 600);
   function onKey(event) {
     if (event.key === 'Escape') close();
   }

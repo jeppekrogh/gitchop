@@ -5,7 +5,9 @@ window.__gitchop = window.__gitchop || {};
 
   const ANGLE = -9;
   const SWEEP = 240;
-  const DARK_AT = 195;
+  // The cut completes, a beat passes, then the dark falls and the menu follows — the phases run
+  // in sequence, never over each other, so the slice is seen whole before anything covers it.
+  const DARK_AT = SWEEP + 10;
   const DARK_IN = 120;
   const EASE_BLADE = 'cubic-bezier(0.28, 0.4, 0.2, 1)';
   const EASE_SOFT = 'cubic-bezier(0.32, 0.72, 0, 1)';
