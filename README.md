@@ -34,8 +34,8 @@ This takes over GitHub's own <kbd>.</kbd> shortcut, which normally opens github.
 
 The opening animation is tuned in Settings. **Colour** is a row of swatches — steel is the classic
 blade, any other paints the blade, sparks and flash. **Epicness** is one dial from a clean quiet cut
-to a full action scene: the glow deepens first, then sparks fly, then a flash of light, and finally
-the screen shakes. **Speed** slows the whole thing into slow motion or hurries it. **Preview chop**
+to a full action scene: the glow deepens first, then sparks fly, then a flash of light.
+**Speed** slows the whole thing into slow motion or hurries it. **Preview chop**
 plays the result over the settings page before you leave it. The defaults are the classic cut, and
 `prefers-reduced-motion` keeps everything to a plain fade no matter the settings.
 

@@ -163,33 +163,6 @@ window.__gitchop = window.__gitchop || {};
       }
     }
 
-    /**
-     * The page recoils rather than the overlay: the host is a child of <html>, and a transform on
-     * an ancestor of a fixed-position element re-anchors it to the document — on a scrolled page
-     * that would fling the overlay off-screen. But the scrim is near-opaque before the shake is
-     * halfway done, and a hidden shake reads as no shake at all, so the menu layer rattles on the
-     * same frames: the page carries the impact while it is still lit, the arriving panel carries
-     * it on through the dark.
-     */
-    function recoil(sweep) {
-      const amplitude = fx.shakeAmplitude;
-      const steps = 6 + Math.round(amplitude / 15);
-      const frames = [{ transform: 'translate(0px, 0px)' }];
-      for (let i = 0; i < steps; i++) {
-        const reach = amplitude * (1 - i / steps) ** 1.5;
-        const angle = Math.random() * Math.PI * 2;
-        frames.push({
-          transform: `translate(${(Math.cos(angle) * reach).toFixed(1)}px, ${(Math.sin(angle) * reach).toFixed(1)}px)`,
-        });
-      }
-      frames.push({ transform: 'translate(0px, 0px)' });
-      const options = { duration: (300 + 6 * amplitude) * pace, delay: sweep * 0.45, easing: 'linear' };
-      for (const target of [document.body, menuLayer]) {
-        const shake = target.animate(frames, options);
-        shake.finished.then(() => shake.cancel()).catch(() => {});
-      }
-    }
-
     const stage = {
       host,
       shadow,
@@ -227,7 +200,6 @@ window.__gitchop = window.__gitchop || {};
         });
 
         if (fx.sparkCount > 0) throwSparks(sweep);
-        if (fx.shakeAmplitude > 0) recoil(sweep);
         if (fx.flashPeak > 0) {
           flash.style.background = `radial-gradient(120% 90% at 50% 45%, var(--gc-flash), transparent ${fx.flashSpread}%)`;
           once(flash, [{ opacity: 0 }, { opacity: fx.flashPeak, offset: 0.2 }, { opacity: 0 }], {

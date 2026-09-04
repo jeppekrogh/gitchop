@@ -27,7 +27,7 @@ window.__gitchop = window.__gitchop || {};
    */
   const SLIDERS = [
     { id: 'colour', label: 'Colour', min: 0, max: 360, value: 0, swatches: SWATCHES, hint: 'Steel is the classic blade; any other swatch paints the blade, sparks and flash.' },
-    { id: 'epicness', label: 'Epicness', min: 0, max: 100, value: 0, hint: 'From a clean quiet cut to a full action scene: more glow, then sparks, then a flash of light, and finally the screen shakes.' },
+    { id: 'epicness', label: 'Epicness', min: 0, max: 100, value: 0, hint: 'From a clean quiet cut to a full action scene: more glow, then sparks, then a flash of light.' },
     { id: 'speed', label: 'Speed', min: 25, max: 200, value: 100, hint: '100 is the classic pace; lower is slow motion.' },
   ];
 
@@ -46,9 +46,8 @@ window.__gitchop = window.__gitchop || {};
 
   /**
    * What the sliders mean, in the stage's units. The epicness dial is staged rather than linear:
-   * the glow deepens from the first notch, sparks arrive early, the flash joins from the middle,
-   * and the screen only shakes once things are already wild — so every part of the range reads
-   * differently, and 100 is unmistakably not 60.
+   * the glow deepens from the first notch, sparks arrive early, and the flash joins from the
+   * middle — so every part of the range reads differently, and 100 is unmistakably not 60.
    */
   function resolve(raw) {
     const fx = sanitize(raw);
@@ -63,7 +62,6 @@ window.__gitchop = window.__gitchop || {};
       haloSize: Math.round(6 + 14 * e),
       sparkCount: Math.round(170 * stage(0.08, 1, 1.25)),
       sparkEnergy: 1 + 1.8 * e,
-      shakeAmplitude: Math.round(46 * stage(0.35, 1, 1.4)),
       flashPeak: flash,
       flashSpread: Math.round(70 + 30 * flash),
     };
