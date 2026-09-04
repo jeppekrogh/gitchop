@@ -10,9 +10,10 @@ it from.
   cut to a full action scene — the glow deepens first, then sparks fly, then a flash of light — and
   **Speed** runs from slow motion to double pace. A **Preview chop**
   button plays the result over the settings page itself. The defaults keep the classic look, with
-  one timing change: the cut now finishes before the page darkens and the menu arrives, where the
-  dark used to start mid-sweep. `prefers-reduced-motion` still collapses everything to a plain fade
-  regardless of the settings.
+  one timing change: the slice now plays out whole — the blade crosses in the clear, the impact
+  flash pops as it exits, and the afterglow fades on the bright page — before the dark falls and
+  the menu arrives; the dark used to start mid-sweep. `prefers-reduced-motion` still collapses
+  everything to a plain fade regardless of the settings.
 
 ## 2.1.0
 

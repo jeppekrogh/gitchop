@@ -5,9 +5,11 @@ window.__gitchop = window.__gitchop || {};
 
   const ANGLE = -9;
   const SWEEP = 240;
-  // The cut completes, a beat passes, then the dark falls and the menu follows — the phases run
-  // in sequence, never over each other, so the slice is seen whole before anything covers it.
-  const DARK_AT = SWEEP + 10;
+  // The slice must be seen: the blade crosses in the clear, the impact flash pops as it exits,
+  // and the afterglow fades out on the still-bright page. Only when the line has died does the
+  // dark fall, with the menu behind it — nothing ever opens on top of the slicing animation.
+  const AFTERGLOW = 260;
+  const DARK_AT = SWEEP + AFTERGLOW;
   const DARK_IN = 120;
   const EASE_BLADE = 'cubic-bezier(0.28, 0.4, 0.2, 1)';
   const EASE_SOFT = 'cubic-bezier(0.32, 0.72, 0, 1)';
@@ -187,12 +189,15 @@ window.__gitchop = window.__gitchop || {};
             easing: EASE_BLADE,
           });
         }
-        once(cut, [{ opacity: 0 }, { opacity: 1, offset: 0.08 }, { opacity: 1, offset: 0.62 }, { opacity: 0 }], {
-          duration: sweep + 200 * pace,
+        // The line gleams past the sweep and dies exactly as the dark begins, so the slice plays
+        // out whole on the bright page and nothing is left for the menu to cover.
+        const afterglow = DARK_AT * pace;
+        once(cut, [{ opacity: 0 }, { opacity: 1, offset: 0.06 }, { opacity: 1, offset: 0.64 }, { opacity: 0 }], {
+          duration: afterglow,
           easing: 'linear',
         });
-        once(bloom, [{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 0.75, offset: 0.62 }, { opacity: 0 }], {
-          duration: sweep + 230 * pace,
+        once(bloom, [{ opacity: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 0.75, offset: 0.64 }, { opacity: 0 }], {
+          duration: afterglow + 30 * pace,
           easing: 'linear',
         });
         // Right to left: the glint's leading (left) edge tracks the clip boundary exactly.
@@ -203,10 +208,12 @@ window.__gitchop = window.__gitchop || {};
 
         if (fx.sparkCount > 0) throwSparks(sweep);
         if (fx.flashPeak > 0) {
+          // The pop of light is the impact, so it waits for the blade to finish the cut — firing
+          // it mid-sweep just whited out the slice itself.
           flash.style.background = `radial-gradient(120% 90% at 50% 45%, var(--gc-flash), transparent ${fx.flashSpread}%)`;
-          once(flash, [{ opacity: 0 }, { opacity: fx.flashPeak, offset: 0.2 }, { opacity: 0 }], {
-            duration: (320 + 200 * fx.flashPeak) * pace,
-            delay: sweep * 0.4,
+          once(flash, [{ opacity: 0 }, { opacity: fx.flashPeak, offset: 0.15 }, { opacity: 0 }], {
+            duration: (220 + 120 * fx.flashPeak) * pace,
+            delay: sweep,
             easing: 'ease-out',
           });
         }
