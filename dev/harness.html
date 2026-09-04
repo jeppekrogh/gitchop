@@ -21,7 +21,7 @@
         background: rgba(255,255,255,.9); border: 1px solid #d0d7de; padding: 10px 12px;
       }
       #fx b { font-weight: 600; letter-spacing: 0.04em; }
-      #fx label { display: grid; grid-template-columns: 52px 130px 30px; gap: 8px; align-items: center; }
+      #fx label { display: grid; grid-template-columns: 64px 130px 34px; gap: 8px; align-items: center; }
       #fx output { text-align: right; }
     </style>
   </head>
@@ -94,9 +94,9 @@
       addEventListener('resize', paintPage);
 
       const store = {
-        // Sparks, shake and flash on show, blade classic; override any slider in the URL,
-        // e.g. harness.html?hue=210&tint=70&speed=50.
-        effects: { hue: 0, tint: 0, glow: 50, sparks: 55, shake: 35, flash: 25, speed: 100 },
+        // Enough epicness to show the new effects off, blade classic; override any slider in the
+        // URL, e.g. harness.html?colour=210&epicness=90&speed=50.
+        effects: { colour: 0, epicness: 60, speed: 100 },
         links: [
           { id: '1', icon: '🔔', label: 'Notifications', url: 'https://github.com/notifications' },
           { id: '2', icon: '🧩', label: 'Your pull requests', url: 'https://github.com/pulls' },

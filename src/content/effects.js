@@ -8,12 +8,8 @@ window.__gitchop = window.__gitchop || {};
    * effect exactly as it shipped before it was configurable, so nothing changes until a slider moves.
    */
   const SLIDERS = [
-    { id: 'hue', label: 'Hue', min: 0, max: 360, value: 0, hint: 'Where on the colour wheel the blade sits. Does nothing until Tint is above zero.' },
-    { id: 'tint', label: 'Tint', min: 0, max: 100, value: 0, hint: '0 is the classic steel white; 100 is fully coloured.' },
-    { id: 'glow', label: 'Glow', min: 0, max: 100, value: 50, hint: 'The bloom around the cut. 50 is the classic look.' },
-    { id: 'sparks', label: 'Sparks', min: 0, max: 100, value: 0, hint: 'Embers thrown off the blade as it passes.' },
-    { id: 'shake', label: 'Shake', min: 0, max: 100, value: 0, hint: 'How hard the page recoils from the impact.' },
-    { id: 'flash', label: 'Flash', min: 0, max: 100, value: 0, hint: 'A burst of light at the moment of impact.' },
+    { id: 'colour', label: 'Colour', min: 0, max: 360, value: 0, hint: 'The left end is the classic steel; anywhere else paints the blade, sparks and flash that colour.' },
+    { id: 'epicness', label: 'Epicness', min: 0, max: 100, value: 0, hint: 'From a clean quiet cut to a full action scene: more glow, then sparks, then a flash of light, and finally the screen shakes.' },
     { id: 'speed', label: 'Speed', min: 25, max: 200, value: 100, hint: '100 is the classic pace; lower is slow motion.' },
   ];
 
@@ -30,5 +26,30 @@ window.__gitchop = window.__gitchop || {};
     return effects;
   }
 
-  gc.EFFECTS = { KEY: 'effects', SLIDERS, DEFAULTS, sanitize };
+  /**
+   * What the sliders mean, in the stage's units. The epicness dial is staged rather than linear:
+   * the glow deepens from the first notch, sparks arrive early, the flash joins from the middle,
+   * and the screen only shakes once things are already wild — so every part of the range reads
+   * differently, and 100 is unmistakably not 60.
+   */
+  function resolve(raw) {
+    const fx = sanitize(raw);
+    const e = fx.epicness / 100;
+    const stage = (from, to, power = 1) => Math.min(1, Math.max(0, (e - from) / (to - from))) ** power;
+    const flash = stage(0.25, 0.9);
+    return {
+      speed: fx.speed,
+      hue: fx.colour,
+      tint: fx.colour === 0 ? 0 : 80,
+      bloomHeight: Math.round(26 + 110 * stage(0, 1, 1.3)),
+      haloSize: Math.round(6 + 14 * e),
+      sparkCount: Math.round(170 * stage(0.08, 1, 1.25)),
+      sparkEnergy: 1 + 1.8 * e,
+      shakeAmplitude: Math.round(46 * stage(0.35, 1, 1.4)),
+      flashPeak: flash,
+      flashSpread: Math.round(70 + 30 * flash),
+    };
+  }
+
+  gc.EFFECTS = { KEY: 'effects', SLIDERS, DEFAULTS, sanitize, resolve };
 })();

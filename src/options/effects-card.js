@@ -6,7 +6,7 @@ import { api } from '../lib/links.js';
  * the next keypress on GitHub will play — over the settings page instead of over GitHub.
  */
 const gc = window.__gitchop;
-const { KEY, SLIDERS, DEFAULTS, sanitize } = gc.EFFECTS;
+const { KEY, SLIDERS, DEFAULTS, sanitize, resolve } = gc.EFFECTS;
 
 const host = document.getElementById('effects');
 const statusEl = document.getElementById('effects-status');
@@ -47,7 +47,7 @@ function scheduleCommit() {
 }
 
 function shown(spec, value) {
-  if (spec.id === 'hue') return `${value}°`;
+  if (spec.id === 'colour') return value === 0 ? 'steel' : `${value}°`;
   if (spec.id === 'speed') return `${value}%`;
   return String(value);
 }
@@ -75,7 +75,7 @@ function buildSlider(spec) {
   input.min = String(spec.min);
   input.max = String(spec.max);
   input.step = '1';
-  if (spec.id === 'hue') input.className = 'range-hue';
+  if (spec.id === 'colour') input.className = 'range-colour';
 
   const output = document.createElement('output');
   output.htmlFor = input.id;
@@ -99,13 +99,14 @@ function buildSlider(spec) {
 function preview() {
   if (stage) return;
   const fx = sanitize(effects);
-  const pace = 100 / fx.speed;
+  const play = resolve(fx);
+  const pace = 100 / play.speed;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const running = gc.createStage({ reduced, effects: fx });
   stage = running;
 
   // Long enough to see the dark settle — and the last ember die, when sparks are on.
-  const linger = setTimeout(close, Math.max(320, fx.sparks > 0 ? 1080 : 0) * pace + 600);
+  const linger = setTimeout(close, Math.max(320, play.sparkCount > 0 ? 1500 : 0) * pace + 600);
   function onKey(event) {
     if (event.key === 'Escape') close();
   }
@@ -125,8 +126,9 @@ function render() {
   const note = document.createElement('p');
   note.className = 'note';
   note.textContent =
-    'How the page is chopped open when you press the dot. The defaults are the classic steel cut; ' +
-    'every slider saves as you let go, and Preview plays the result right here.';
+    'How the page is chopped open when you press the dot. Colour paints the blade, epicness turns ' +
+    'one clean cut into a full action scene, and speed slows the whole thing down or hurries it. ' +
+    'Every slider saves as you let go, and Preview plays the result right here.';
 
   const sliders = document.createElement('div');
   sliders.className = 'sliders';

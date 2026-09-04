@@ -20,6 +20,7 @@ window.__gitchop.CSS = `
   --gc-spark: #fff;
   --gc-spark-halo: rgba(255, 255, 255, 0.7);
   --gc-flash: #fff;
+  --gc-halo-size: 6px;
 }
 
 * {
@@ -54,7 +55,7 @@ window.__gitchop.CSS = `
   opacity: 0;
   pointer-events: none;
   background: linear-gradient(90deg, var(--gc-blade-hi), var(--gc-blade-lo));
-  filter: drop-shadow(0 0 6px var(--gc-blade-halo));
+  filter: drop-shadow(0 0 var(--gc-halo-size) var(--gc-blade-halo));
 }
 
 .gc-glint {

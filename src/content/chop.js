@@ -53,7 +53,7 @@ window.__gitchop = window.__gitchop || {};
   }
 
   gc.createStage = function createStage({ reduced = false, effects } = {}) {
-    const fx = gc.EFFECTS.sanitize(effects);
+    const fx = gc.EFFECTS.resolve(effects);
     // Every duration and delay in the open sequence is multiplied by this; 100 is the classic pace.
     const pace = 100 / fx.speed;
     const geo = geometry();
@@ -66,6 +66,7 @@ window.__gitchop = window.__gitchop || {};
     for (const [prop, value] of Object.entries(palette(fx))) {
       host.style.setProperty(prop, value);
     }
+    host.style.setProperty('--gc-halo-size', `${fx.haloSize}px`);
 
     const shadow = host.attachShadow({ mode: 'closed' });
     const style = document.createElement('style');
@@ -83,7 +84,7 @@ window.__gitchop = window.__gitchop || {};
       line.style.width = `${geo.length}px`;
       line.style.transform = geo.onCut;
     }
-    bloom.style.height = `${Math.round(26 * (0.4 + (1.2 * fx.glow) / 100))}px`;
+    bloom.style.height = `${fx.bloomHeight}px`;
     glint.style.width = `${GLINT}px`;
     cut.append(glint);
 
@@ -130,19 +131,19 @@ window.__gitchop = window.__gitchop || {};
      * until its own animation starts.
      */
     function throwSparks(sweep) {
-      const count = Math.round(fx.sparks * 1.2);
-      for (let i = 0; i < count; i++) {
+      const energy = fx.sparkEnergy;
+      for (let i = 0; i < fx.sparkCount; i++) {
         const progress = Math.random();
         const spark = div('gc-spark');
-        const size = 1.5 + Math.random() * 1.5;
+        const size = (1.5 + Math.random() * 1.5) * energy;
         spark.style.width = `${Math.round(size * (2 + Math.random() * 3))}px`;
         spark.style.height = `${size.toFixed(1)}px`;
         spark.style.left = `${Math.round(geo.length * (1 - progress))}px`;
         sparks.append(spark);
 
-        const along = -(10 + Math.random() * 90);
-        const out = (Math.random() < 0.5 ? -1 : 1) * (12 + Math.random() * 70);
-        const fall = 30 + Math.random() * 60;
+        const along = -(10 + Math.random() * 90) * energy;
+        const out = (Math.random() < 0.5 ? -1 : 1) * (12 + Math.random() * 70) * energy;
+        const fall = (30 + Math.random() * 60) * energy;
         const flight = spark.animate(
           [
             { transform: 'translate(0px, 0px)', opacity: 1 },
@@ -150,7 +151,7 @@ window.__gitchop = window.__gitchop || {};
             { transform: `translate(${along.toFixed(1)}px, ${(out + fall).toFixed(1)}px)`, opacity: 0 },
           ],
           {
-            duration: (350 + Math.random() * 450) * pace,
+            duration: (350 + Math.random() * 450) * (0.55 + 0.45 * energy) * pace,
             delay: sweep * progress * (0.8 + Math.random() * 0.25),
             easing: EASE_SOFT,
           },
@@ -166,17 +167,22 @@ window.__gitchop = window.__gitchop || {};
      * holds still while the page shudders under it.
      */
     function recoil(sweep) {
-      const amplitude = (fx.shake / 100) * 16;
+      const amplitude = fx.shakeAmplitude;
+      const steps = 6 + Math.round(amplitude / 15);
       const frames = [{ transform: 'translate(0px, 0px)' }];
-      for (let i = 0; i < 7; i++) {
-        const reach = amplitude * (1 - i / 7) ** 1.5;
+      for (let i = 0; i < steps; i++) {
+        const reach = amplitude * (1 - i / steps) ** 1.5;
         const angle = Math.random() * Math.PI * 2;
         frames.push({
           transform: `translate(${(Math.cos(angle) * reach).toFixed(1)}px, ${(Math.sin(angle) * reach).toFixed(1)}px)`,
         });
       }
       frames.push({ transform: 'translate(0px, 0px)' });
-      const shake = document.body.animate(frames, { duration: 340 * pace, delay: sweep * 0.45, easing: 'linear' });
+      const shake = document.body.animate(frames, {
+        duration: (300 + 4 * amplitude) * pace,
+        delay: sweep * 0.45,
+        easing: 'linear',
+      });
       shake.finished.then(() => shake.cancel()).catch(() => {});
     }
 
@@ -206,28 +212,22 @@ window.__gitchop = window.__gitchop || {};
           duration: sweep + 200 * pace,
           easing: 'linear',
         });
-        const bloomPeak = Math.min(1, fx.glow / 50);
-        once(
-          bloom,
-          [
-            { opacity: 0 },
-            { opacity: bloomPeak, offset: 0.12 },
-            { opacity: bloomPeak * 0.75, offset: 0.62 },
-            { opacity: 0 },
-          ],
-          { duration: sweep + 230 * pace, easing: 'linear' },
-        );
+        once(bloom, [{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 0.75, offset: 0.62 }, { opacity: 0 }], {
+          duration: sweep + 230 * pace,
+          easing: 'linear',
+        });
         // Right to left: the glint's leading (left) edge tracks the clip boundary exactly.
         once(glint, [{ transform: `translateX(${geo.length}px)` }, { transform: 'translateX(0px)' }], {
           duration: sweep,
           easing: EASE_BLADE,
         });
 
-        if (fx.sparks > 0) throwSparks(sweep);
-        if (fx.shake > 0) recoil(sweep);
-        if (fx.flash > 0) {
-          once(flash, [{ opacity: 0 }, { opacity: (fx.flash / 100) * 0.85, offset: 0.2 }, { opacity: 0 }], {
-            duration: 320 * pace,
+        if (fx.sparkCount > 0) throwSparks(sweep);
+        if (fx.shakeAmplitude > 0) recoil(sweep);
+        if (fx.flashPeak > 0) {
+          flash.style.background = `radial-gradient(120% 90% at 50% 45%, var(--gc-flash), transparent ${fx.flashSpread}%)`;
+          once(flash, [{ opacity: 0 }, { opacity: fx.flashPeak, offset: 0.2 }, { opacity: 0 }], {
+            duration: (320 + 200 * fx.flashPeak) * pace,
             delay: sweep * 0.4,
             easing: 'ease-out',
           });
