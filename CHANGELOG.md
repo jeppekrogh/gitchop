@@ -3,6 +3,15 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
+## 2.2.1
+
+- Firefox 140 is now the minimum. The `data_collection_permissions` block in the Gecko settings —
+  which AMO's disclosure form reads, and which has been mandatory there since November 2025 — is
+  only understood from Firefox 140 on desktop, so claiming support back to 115 meant those users
+  never got the browser's own consent prompt, and AMO warned about the mismatch on every upload.
+  Nothing else changed: ESR 128 has been out of support for a year, ESR 115 survives only on
+  Windows 7–8.1 and macOS 10.12–10.14, and github.com asks for a current browser regardless.
+
 ## 2.2.0
 
 - The chop can be tuned in Settings: an **Effect** switch turns the whole animation off — the dot

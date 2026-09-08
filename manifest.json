@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "gitchop for GitHub",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Press . anywhere on GitHub for your own links and instant repository search, with your organisations first.",
   "permissions": ["storage"],
   "host_permissions": ["https://github.com/*", "https://api.github.com/*"],
@@ -41,7 +41,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "gitchop@itk-dev",
-      "strict_min_version": "115.0",
+      "strict_min_version": "140.0",
       "data_collection_permissions": {
         "required": ["searchTerms"],
         "optional": ["authenticationInfo", "bookmarksInfo"]
