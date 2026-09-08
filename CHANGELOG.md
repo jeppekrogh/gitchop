@@ -3,7 +3,7 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
-## Unreleased
+## 2.2.0
 
 - The chop can be tuned in Settings: an **Effect** switch turns the whole animation off — the dot
   then opens the menu instantly — **Colour** is two rows of nine named swatches (steel is the
