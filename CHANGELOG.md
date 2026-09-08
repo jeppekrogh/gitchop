@@ -20,6 +20,10 @@ it from.
   a pause. The screen-wide flash is gone at every setting; at higher epicness the impact is a burst
   of light along the cut instead. `prefers-reduced-motion` still collapses everything to a plain
   fade regardless of the settings.
+- The dot is now claimed before the content script touches a single extension API, so a tab that
+  cannot reach the effect settings — the add-on reloaded underneath it, storage briefly gone —
+  falls back to the default chop instead of ignoring the key. Registering the listener last meant
+  any failure on the way to it left the page with no listener at all, and pressing `.` did nothing.
 
 ## 2.1.0
 

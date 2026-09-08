@@ -9,6 +9,15 @@ window.__gitchop = window.__gitchop || {};
 
   const state = { open: false, stage: null, menu: null, lastFocus: null };
 
+  /**
+   * The dot is claimed here, before a single extension API is touched — onKeydown is hoisted, so
+   * this is the first thing that runs. Everything below can fail and the key still opens the
+   * menu; registering last meant a throw on the way down (storage gone, permissions changed, the
+   * add-on reloaded under an open tab) left the page with no listener at all, and the extension
+   * looked dead rather than degraded.
+   */
+  window.addEventListener('keydown', onKeydown, true);
+
   function deepActiveElement() {
     let element = document.activeElement;
     while (element?.shadowRoot?.activeElement) element = element.shadowRoot.activeElement;
@@ -42,7 +51,8 @@ window.__gitchop = window.__gitchop || {};
   }
 
   // The chop must start the instant the key goes down, so the effect settings are read once up
-  // front and kept fresh, never awaited in the keypress path.
+  // front and kept fresh, never awaited in the keypress path. Both halves are guarded: settings
+  // the tab cannot reach cost the user their settings, never the chop itself.
   let effects = gc.EFFECTS.sanitize();
   (async () => {
     try {
@@ -52,10 +62,14 @@ window.__gitchop = window.__gitchop || {};
       /* the defaults already loaded */
     }
   })();
-  api.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'sync' || !changes[gc.EFFECTS.KEY]) return;
-    effects = gc.EFFECTS.sanitize(changes[gc.EFFECTS.KEY].newValue);
-  });
+  try {
+    api.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'sync' || !changes[gc.EFFECTS.KEY]) return;
+      effects = gc.EFFECTS.sanitize(changes[gc.EFFECTS.KEY].newValue);
+    });
+  } catch {
+    /* this tab keeps whatever it loaded with */
+  }
 
   function onResize() {
     if (state.open) closeChop();
@@ -131,6 +145,4 @@ window.__gitchop = window.__gitchop || {};
     event.stopImmediatePropagation();
     openChop();
   }
-
-  window.addEventListener('keydown', onKeydown, true);
 })();
