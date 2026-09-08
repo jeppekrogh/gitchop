@@ -193,13 +193,7 @@ function preview() {
   const running = gc.createStage({ reduced, effects: fx });
   stage = running;
 
-  // Long enough to see the dark settle — and the last ember die, when sparks are on: the slice
-  // runs at pace, its aftermath at the slower afterPace. With the effect switched off there is
-  // only the instant scrim, so a short hold shows exactly that.
-  const linger = setTimeout(
-    close,
-    play.enabled ? 240 * play.pace + Math.max(640, play.sparkCount > 0 ? 1500 : 0) * play.afterPace + 600 : 900,
-  );
+  let linger = null;
   function onKey(event) {
     if (event.key === 'Escape') close();
   }
@@ -212,7 +206,16 @@ function preview() {
   }
   running.menuLayer.addEventListener('mousedown', close);
   window.addEventListener('keydown', onKey);
-  running.chop();
+
+  // The stage itself says when the dark has settled, so the preview leaves on its own the moment
+  // the effect is over — there is nothing behind it to look at, unlike on GitHub where the menu
+  // is waiting in the opening. The hold after that is only the beat the last ember needs at this
+  // speed. Nothing here restates the stage's timings: a guess that outlives the animation is a
+  // black screen the user has to click away.
+  running.chop().then(() => {
+    if (stage !== running) return;
+    linger = setTimeout(close, play.enabled ? 220 * play.afterPace : 320);
+  });
 }
 
 function render() {

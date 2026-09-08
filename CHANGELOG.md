@@ -12,7 +12,8 @@ it from.
   bursts from the cut — and **Speed** runs from slow motion to double pace. Speed drives the slice
   itself; the aftermath — the dark spilling open, the light, the embers and the menu — trails it,
   keeping its slow drama however fast the blade is, and the two only fully agree at the slowest
-  setting. A **Preview chop** button plays the result over the settings page itself.
+  setting. A **Preview chop** button plays the result, saved or not, over the settings page itself
+  and clears the moment the effect is over — there is no menu behind it to wait for.
 - The chop itself now opens the page instead of fading it: the blade still crosses in the clear,
   but the dark then spills out of the finished cut — the line splits into two glowing edges that
   sweep apart and cool while the menu rises into the opening — where it used to fade in flat after

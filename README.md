@@ -38,8 +38,8 @@ any other paints the blade, sparks and light. **Epicness** is one dial from a cl
 full action scene: the glow deepens first, then sparks fly, then light bursts from the cut.
 **Speed** slows the slice into slow motion or hurries it — the aftermath keeps its
 slow drama at any speed. **Preview chop**
-plays the result over the settings page before you leave it. The defaults are the classic cut, and
-`prefers-reduced-motion` keeps everything to a plain fade no matter the settings.
+plays the result over the settings page before you leave it, saved or not. The defaults are the
+classic cut, and `prefers-reduced-motion` keeps everything to a plain fade no matter the settings.
 
 ## Links
 
