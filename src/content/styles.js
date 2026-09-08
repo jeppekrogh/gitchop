@@ -19,7 +19,7 @@ window.__gitchop.CSS = `
   --gc-bloom-lo: rgba(255, 255, 255, 0.1);
   --gc-spark: #fff;
   --gc-spark-halo: rgba(255, 255, 255, 0.7);
-  --gc-flash: #fff;
+  --gc-flare: #fff;
   --gc-halo-size: 6px;
 }
 
@@ -44,6 +44,26 @@ window.__gitchop.CSS = `
   align-items: center;
   justify-content: center;
   padding: 24px;
+}
+
+.gc-wipe {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(9, 11, 14, 0.97) 6%, rgba(9, 11, 14, 0.97) 94%, transparent);
+}
+
+.gc-edge {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  height: 2px;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--gc-blade-hi), var(--gc-blade-lo));
+  filter: drop-shadow(0 0 var(--gc-halo-size) var(--gc-blade-halo));
 }
 
 .gc-cut {
@@ -92,12 +112,14 @@ window.__gitchop.CSS = `
   box-shadow: 0 0 6px var(--gc-spark-halo);
 }
 
-.gc-flash {
+.gc-flare {
   position: fixed;
-  inset: 0;
+  top: 50%;
+  left: 50%;
   opacity: 0;
   pointer-events: none;
-  background: radial-gradient(120% 90% at 50% 45%, var(--gc-flash), transparent 70%);
+  background: radial-gradient(50% 50% at 50% 50%, var(--gc-flare), transparent 72%);
+  filter: blur(14px);
 }
 
 .gc-panel {

@@ -5,12 +5,16 @@ window.__gitchop = window.__gitchop || {};
 
   const ANGLE = -9;
   const SWEEP = 240;
-  // The slice must be seen: the blade crosses in the clear, the impact flash pops as it exits,
-  // and the afterglow fades out on the still-bright page. Only when the line has died does the
-  // dark fall, with the menu behind it — nothing ever opens on top of the slicing animation.
-  const AFTERGLOW = 260;
-  const DARK_AT = SWEEP + AFTERGLOW;
-  const DARK_IN = 120;
+  // The slice still plays out whole — the blade crosses in the clear — but everything after is
+  // caused by the cut instead of merely following it: the dark spills out of the finished line
+  // while its severed edges glow apart, and the menu rises into the opening. Nothing fades in
+  // flat, and there is never a moment where the screen just waits.
+  // Everything from the wound onward is measured from the impact, not from zero: the slice is
+  // paced by the speed slider while the aftermath has its own, gentler pace (fx.afterPace).
+  const WOUND = 320;
+  const SCRIM_AT = WOUND * 0.75;
+  const SCRIM_IN = 180;
+  const PANEL_AT = 140;
   const EASE_BLADE = 'cubic-bezier(0.28, 0.4, 0.2, 1)';
   const EASE_SOFT = 'cubic-bezier(0.32, 0.72, 0, 1)';
   const EASE_BACK = 'cubic-bezier(0.5, 0, 0.2, 1)';
@@ -24,12 +28,16 @@ window.__gitchop = window.__gitchop || {};
 
   /**
    * The blade and its bloom are boxes lying along the cut, so wiping them open from local right
-   * to local left with a clip-path sweeps the cut across the viewport exactly once.
+   * to local left with a clip-path sweeps the cut across the viewport exactly once. The wound is
+   * a square of 1.2 diagonals: its fully dark plateau (the 6%–94% gradient stops) then reaches
+   * 0.528 diagonals out from the cut, past the farthest a corner can ever be (half a diagonal),
+   * so the wound covers the whole screen at any angle and any aspect ratio — portrait included.
    */
   function geometry() {
     const radians = (ANGLE * Math.PI) / 180;
     return {
       length: (window.innerWidth / Math.cos(radians)) * 1.02,
+      cover: Math.hypot(window.innerWidth, window.innerHeight) * 1.2,
       onCut: `translate(-50%, -50%) rotate(${ANGLE}deg)`,
       closed: 'inset(0 0 0 100%)',
       open: 'inset(0 0 0 0)',
@@ -52,14 +60,18 @@ window.__gitchop = window.__gitchop || {};
       '--gc-bloom-lo': tone(30, 0.1),
       '--gc-spark': tone(28, 1),
       '--gc-spark-halo': tone(28, 0.7),
-      '--gc-flash': tone(15, 1),
+      '--gc-flare': tone(15, 1),
     };
   }
 
   gc.createStage = function createStage({ reduced = false, effects } = {}) {
     const fx = gc.EFFECTS.resolve(effects);
-    // Every duration and delay in the open sequence is multiplied by this; 100 is the classic pace.
-    const pace = 100 / fx.speed;
+    // Switched off in Settings: no blade, no wound — the scrim and menu simply appear.
+    const instant = !fx.enabled;
+    const quick = reduced || instant;
+    // The slice multiplies by pace; everything after the impact multiplies by afterPace, which
+    // trails the speed slider so the aftermath stays deliberate however fast the blade is.
+    const { pace, afterPace } = fx;
     const geo = geometry();
 
     const host = document.createElement('gitchop-root');
@@ -77,24 +89,31 @@ window.__gitchop = window.__gitchop || {};
     style.textContent = gc.CSS;
 
     const scrim = div('gc-scrim');
+    const wipe = div('gc-wipe');
+    const edges = [div('gc-edge'), div('gc-edge')];
     const bloom = div('gc-bloom');
     const cut = div('gc-cut');
     const glint = div('gc-glint');
+    const flare = div('gc-flare');
     const sparks = div('gc-sparks');
-    const flash = div('gc-flash');
     const menuLayer = div('gc-menu-layer');
 
-    for (const line of [cut, bloom, sparks]) {
+    for (const line of [cut, bloom, sparks, flare]) {
       line.style.width = `${geo.length}px`;
       line.style.transform = geo.onCut;
     }
     bloom.style.height = `${fx.bloomHeight}px`;
+    flare.style.height = `${fx.flareHeight}px`;
+    wipe.style.width = `${geo.cover}px`;
+    wipe.style.height = `${geo.cover}px`;
+    wipe.style.transform = `${geo.onCut} scaleY(0.004)`;
+    for (const edge of edges) edge.style.width = `${geo.cover}px`;
     glint.style.width = `${GLINT}px`;
     cut.append(glint);
 
-    // The blade sits above the dark but below the menu, so it never crosses the panel; sparks and
-    // flash ride above the blade so they stay visible once the dark is in.
-    shadow.append(style, scrim, bloom, cut, sparks, flash, menuLayer);
+    // The wound and its edges sit under the blade; the flare hazes the line at impact; the sparks
+    // ride above everything but the menu, so the embers keep glowing once the dark is in.
+    shadow.append(style, scrim, wipe, ...edges, bloom, cut, flare, sparks, menuLayer);
     document.documentElement.append(host);
 
     const blockScroll = (event) => event.preventDefault();
@@ -121,7 +140,10 @@ window.__gitchop = window.__gitchop || {};
       return node.animate(keyframes, { fill: 'both', ...options });
     }
 
-    /** Tracked so close() can freeze the property wherever it got to and animate out from there. */
+    /**
+     * Tracked so close() can cancel it — pending or already playing — freeze the property
+     * wherever it got to, and animate out from there.
+     */
     function track(node, keyframes, options, props) {
       const animation = once(node, keyframes, options);
       live.push({ animation, node, props });
@@ -158,7 +180,7 @@ window.__gitchop = window.__gitchop || {};
             { transform: `translate(${along.toFixed(1)}px, ${(out + fall).toFixed(1)}px)`, opacity: 0 },
           ],
           {
-            duration: (160 + Math.random() * 240) * (0.75 + 0.25 * energy) * pace,
+            duration: (160 + Math.random() * 240) * (0.75 + 0.25 * energy) * afterPace,
             delay: sweep * progress * (1 + Math.random() * 0.08),
             easing: EASE_SOFT,
           },
@@ -172,15 +194,21 @@ window.__gitchop = window.__gitchop || {};
       shadow,
       menuLayer,
 
-      /** The blade crosses the viewport once; the dark just fades in behind it. */
+      /**
+       * The blade crosses once, then the cut splits into two glowing edges that sweep the dark
+       * open behind them; the blurred scrim only fades in once the wound already covers the
+       * screen, so the switch is invisible.
+       */
       chop() {
         const dark = track(
           scrim,
           [{ opacity: 0 }, { opacity: 1 }],
-          { duration: reduced ? 120 : DARK_IN * pace, delay: reduced ? 0 : DARK_AT * pace, easing: 'ease-out' },
+          quick
+            ? { duration: instant ? 90 : 120, easing: 'ease-out' }
+            : { duration: SCRIM_IN * afterPace, delay: SWEEP * pace + SCRIM_AT * afterPace, easing: 'ease-out' },
           ['opacity'],
         );
-        if (reduced) return dark.finished.catch(() => {});
+        if (quick) return dark.finished.catch(() => {});
 
         const sweep = SWEEP * pace;
         for (const line of [cut, bloom]) {
@@ -189,33 +217,68 @@ window.__gitchop = window.__gitchop || {};
             easing: EASE_BLADE,
           });
         }
-        // The line gleams past the sweep and dies exactly as the dark begins, so the slice plays
-        // out whole on the bright page and nothing is left for the menu to cover.
-        const afterglow = DARK_AT * pace;
-        once(cut, [{ opacity: 0 }, { opacity: 1, offset: 0.06 }, { opacity: 1, offset: 0.64 }, { opacity: 0 }], {
-          duration: afterglow,
-          easing: 'linear',
-        });
-        once(bloom, [{ opacity: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 0.75, offset: 0.64 }, { opacity: 0 }], {
-          duration: afterglow + 30 * pace,
-          easing: 'linear',
-        });
         // Right to left: the glint's leading (left) edge tracks the clip boundary exactly.
         once(glint, [{ transform: `translateX(${geo.length}px)` }, { transform: 'translateX(0px)' }], {
           duration: sweep,
           easing: EASE_BLADE,
         });
+        // The line hands its light to the wound's edges: bright through the whole sweep, gone
+        // shortly after they have carried it away. The rise and hold live on the slice's clock,
+        // the dying tail on the aftermath's, so the offsets are computed rather than constant.
+        const glow = (node, tail, dim) => {
+          const duration = sweep + tail * afterPace;
+          once(
+            node,
+            [
+              { opacity: 0 },
+              { opacity: 1, offset: (50 * pace) / duration },
+              { opacity: dim, offset: sweep / duration },
+              { opacity: 0 },
+            ],
+            { duration, easing: 'linear' },
+          );
+        };
+        glow(cut, 180, 1);
+        glow(bloom, 220, 0.8);
+
+        // The wound: a dark sheet scales open from the cut while an edge line rides each side of
+        // the widening gap — same delay, duration and easing, so they sit exactly on its boundary
+        // — cooling as they travel. All of it is tracked, so an early close freezes the dark
+        // where it is instead of letting a still-pending wound burst open over the closing screen.
+        const wound = WOUND * afterPace;
+        track(wipe, [{ opacity: 0 }, { opacity: 1 }], { duration: 40 * afterPace, delay: sweep }, ['opacity', 'transform']);
+        track(
+          wipe,
+          [{ transform: `${geo.onCut} scaleY(0.004)` }, { transform: `${geo.onCut} scaleY(1)` }],
+          { duration: wound, delay: sweep, easing: EASE_SOFT },
+          ['opacity', 'transform'],
+        );
+        edges.forEach((edge, index) => {
+          const reach = (index === 0 ? -1 : 1) * (geo.cover / 2);
+          track(
+            edge,
+            [{ transform: `${geo.onCut} translateY(0px)` }, { transform: `${geo.onCut} translateY(${reach.toFixed(1)}px)` }],
+            { duration: wound, delay: sweep, easing: EASE_SOFT },
+            ['opacity', 'transform'],
+          );
+          track(
+            edge,
+            [{ opacity: 0 }, { opacity: 0.9, offset: 0.1 }, { opacity: 0 }],
+            { duration: wound, delay: sweep, easing: 'linear' },
+            ['opacity', 'transform'],
+          );
+        });
 
         if (fx.sparkCount > 0) throwSparks(sweep);
-        if (fx.flashPeak > 0) {
-          // The pop of light is the impact, so it waits for the blade to finish the cut — firing
-          // it mid-sweep just whited out the slice itself.
-          flash.style.background = `radial-gradient(120% 90% at 50% 45%, var(--gc-flash), transparent ${fx.flashSpread}%)`;
-          once(flash, [{ opacity: 0 }, { opacity: fx.flashPeak, offset: 0.15 }, { opacity: 0 }], {
-            duration: (220 + 120 * fx.flashPeak) * pace,
-            delay: sweep,
-            easing: 'ease-out',
-          });
+        if (fx.flarePeak > 0) {
+          // The impact is light bursting from the cut itself, never a screen-wide flash: it pops
+          // as the blade exits and dies while the dark is still spreading.
+          track(
+            flare,
+            [{ opacity: 0 }, { opacity: 0.9 * fx.flarePeak ** 0.7, offset: 0.18 }, { opacity: 0 }],
+            { duration: (240 + 140 * fx.flarePeak) * afterPace, delay: sweep, easing: 'ease-out' },
+            ['opacity'],
+          );
         }
 
         return dark.finished.catch(() => {});
@@ -226,10 +289,14 @@ window.__gitchop = window.__gitchop || {};
         return track(
           panel,
           [
-            { opacity: 0, transform: 'translateY(8px) scale(0.99)' },
+            { opacity: 0, transform: 'translateY(10px) scale(0.985)' },
             { opacity: 1, transform: 'none' },
           ],
-          { duration: reduced ? 120 : 200, easing: EASE_SOFT, delay: reduced ? 0 : (DARK_AT + 45) * pace },
+          {
+            duration: instant ? 90 : reduced ? 120 : 240,
+            easing: EASE_SOFT,
+            delay: quick ? 0 : SWEEP * pace + PANEL_AT * afterPace,
+          },
           ['opacity', 'transform'],
         ).finished.catch(() => {});
       },
@@ -255,7 +322,8 @@ window.__gitchop = window.__gitchop || {};
           closing.push(node.animate([keyframe], { easing: EASE_BACK, fill: 'forwards', ...options }));
 
         if (panelEl) to(panelEl, { opacity: 0, transform: 'translateY(6px) scale(0.99)' }, { duration: 110 });
-        to(scrim, { opacity: 0 }, { duration: reduced ? 100 : 170, delay: reduced ? 0 : 60 });
+        for (const glow of [...edges, flare]) to(glow, { opacity: 0 }, { duration: 90 });
+        for (const dark of [scrim, wipe]) to(dark, { opacity: 0 }, { duration: reduced ? 100 : 170, delay: reduced ? 0 : 60 });
 
         await Promise.all(closing.map((animation) => animation.finished.catch(() => {})));
         stage.destroy();

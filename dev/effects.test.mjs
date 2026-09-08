@@ -19,6 +19,17 @@ assert.equal(stored.epicness, 43, 'rounded to whole slider steps');
 assert.equal(stored.speed, 25, 'speed can never reach zero');
 assert.equal(EFFECTS.sanitize({ epicness: '80' }).epicness, 80, 'numeric strings count as numbers');
 assert.equal(EFFECTS.sanitize({ epicness: {} }).epicness, 0, 'a non-number falls back to the default');
+assert.equal(EFFECTS.sanitize({ enabled: 0 }).enabled, 0, 'the switch can be stored off');
+assert.equal(EFFECTS.sanitize({ enabled: true }).enabled, 1, 'a boolean from older storage still counts');
+assert.equal(EFFECTS.sanitize({ enabled: 7 }).enabled, 1, 'the switch clamps to on/off');
+
+// The whole effect can be switched off, and the switch leads the card.
+const toggleSpec = EFFECTS.SLIDERS[0];
+assert.equal(toggleSpec.id, 'enabled', 'the off switch is the first control');
+assert.ok(toggleSpec.toggle, 'it renders as a switch, not a slider');
+assert.deepEqual([toggleSpec.min, toggleSpec.max, toggleSpec.value], [0, 1, 1], 'on or off, and on by default');
+assert.equal(EFFECTS.resolve({}).enabled, true, 'the effect plays unless switched off');
+assert.equal(EFFECTS.resolve({ enabled: 0 }).enabled, false, 'switched off means no animation at all');
 
 for (const slider of EFFECTS.SLIDERS) {
   assert.ok(slider.min < slider.max, `${slider.id} has a usable range`);
@@ -32,8 +43,27 @@ assert.equal(calm.tint, 0, 'colour 0 is the steel blade');
 assert.equal(calm.bloomHeight, 26, 'epicness 0 keeps the classic bloom');
 assert.equal(calm.haloSize, 6, 'epicness 0 keeps the classic halo');
 assert.equal(calm.sparkCount, 0, 'no sparks until the dial moves');
-assert.equal(calm.flashPeak, 0, 'no flash until the dial moves');
+assert.equal(calm.flarePeak, 0, 'no flare until the dial moves');
 assert.ok(!('shakeAmplitude' in calm), 'the screen never shakes');
+assert.ok(!('flashPeak' in calm) && !('flashSpread' in calm), 'the screen-wide flash is gone for good');
+
+// The slice follows the speed slider exactly; the aftermath trails it, so a fast slice keeps its
+// slow drama. The two agree at the slowest setting, where the whole effect is one slow motion.
+assert.equal(calm.pace, 1, 'speed 100 is the classic slice pace');
+assert.ok(calm.afterPace > 2 && calm.afterPace < 3, `the classic aftermath stays near slow motion (${calm.afterPace})`);
+const slowest = EFFECTS.resolve({ speed: 25 });
+assert.equal(slowest.pace, 4, 'the slowest slice is four times the classic');
+assert.equal(slowest.afterPace, slowest.pace, 'at the slowest speed the aftermath and the slice agree');
+const fastest = EFFECTS.resolve({ speed: 200 });
+assert.equal(fastest.pace, 0.5, 'double speed halves the slice');
+assert.ok(fastest.afterPace > 1.8, `even at double speed the aftermath stays deliberate (${fastest.afterPace})`);
+let quicker = slowest;
+for (const speed of [50, 100, 150, 200]) {
+  const next = EFFECTS.resolve({ speed });
+  assert.ok(next.afterPace < quicker.afterPace, `the aftermath still answers the dial at speed ${speed}`);
+  assert.ok(next.afterPace >= next.pace, `the aftermath is never faster than the slice at speed ${speed}`);
+  quicker = next;
+}
 
 const painted = EFFECTS.resolve({ colour: 210 });
 assert.equal(painted.hue, 210);
@@ -55,20 +85,20 @@ for (const swatch of EFFECTS.SWATCHES) {
   else assert.ok(tinted.tint > 0, `${swatch.name} tints the blade`);
 }
 
-// The dial is staged: glow and sparks lead, the flash joins from the middle.
+// The dial is staged: glow and sparks lead, the flare joins from the middle.
 const early = EFFECTS.resolve({ epicness: 20 });
 assert.ok(early.bloomHeight > calm.bloomHeight, 'glow grows from the first stretch');
 assert.ok(early.sparkCount > 0, 'sparks arrive early');
-assert.equal(early.flashPeak, 0, 'the flash sleeps until mid-dial');
+assert.equal(early.flarePeak, 0, 'the flare sleeps until mid-dial');
 
 const mid = EFFECTS.resolve({ epicness: 55 });
-assert.ok(mid.flashPeak > 0, 'the flash has joined by the middle');
+assert.ok(mid.flarePeak > 0, 'the flare has joined by the middle');
 
 // No channel ever shrinks across the dial, and once one has woken it keeps climbing.
 let previous = calm;
 for (const epicness of [25, 50, 75, 100]) {
   const next = EFFECTS.resolve({ epicness });
-  for (const key of ['bloomHeight', 'haloSize', 'sparkCount', 'sparkEnergy', 'flashPeak']) {
+  for (const key of ['bloomHeight', 'haloSize', 'sparkCount', 'sparkEnergy', 'flarePeak', 'flareHeight']) {
     if (previous[key] > calm[key]) {
       assert.ok(next[key] > previous[key], `${key} still grows at epicness ${epicness}`);
     } else {
@@ -83,8 +113,8 @@ const full = EFFECTS.resolve({ epicness: 100 });
 assert.ok(full.bloomHeight >= 130, `full bloom is a blaze (${full.bloomHeight}px)`);
 assert.ok(full.sparkCount >= 150, `full sparks are a storm (${full.sparkCount})`);
 assert.ok(full.sparkEnergy >= 2.5, `full sparks fly hard (${full.sparkEnergy})`);
-assert.equal(full.flashPeak, 1, 'full flash is blinding');
-assert.equal(full.flashSpread, 100, 'full flash covers the screen');
+assert.equal(full.flarePeak, 1, 'the full flare burns at its brightest');
+assert.ok(full.flareHeight >= 400, `the full flare erupts tall from the cut (${full.flareHeight}px)`);
 assert.ok(full.sparkCount >= 2 * mid.sparkCount, 'the top half of the dial doubles the sparks');
 
 console.log('effects.js: all assertions passed');

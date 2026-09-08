@@ -32,10 +32,12 @@ This takes over GitHub's own <kbd>.</kbd> shortcut, which normally opens github.
 
 ## The chop
 
-The opening animation is tuned in Settings. **Colour** is a row of swatches — steel is the classic
-blade, any other paints the blade, sparks and flash. **Epicness** is one dial from a clean quiet cut
-to a full action scene: the glow deepens first, then sparks fly, then a flash of light.
-**Speed** slows the whole thing into slow motion or hurries it. **Preview chop**
+The opening animation is tuned in Settings. An **Effect** switch turns it off altogether — the dot
+then opens the menu instantly. **Colour** is a row of swatches — steel is the classic blade, any
+other paints the blade, sparks and light. **Epicness** is one dial from a clean quiet cut to a full
+action scene: the glow deepens first, then sparks fly, then light bursts from the cut.
+**Speed** slows the slice into slow motion or hurries it — the aftermath keeps its
+slow drama at any speed. **Preview chop**
 plays the result over the settings page before you leave it. The defaults are the classic cut, and
 `prefers-reduced-motion` keeps everything to a plain fade no matter the settings.
 

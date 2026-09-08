@@ -5,15 +5,20 @@ it from.
 
 ## Unreleased
 
-- The chop can be tuned in Settings: **Colour** is a row of named swatches (steel is the classic
-  blade, any other paints the blade, sparks and flash), **Epicness** is one dial from a clean quiet
-  cut to a full action scene — the glow deepens first, then sparks fly, then a flash of light — and
-  **Speed** runs from slow motion to double pace. A **Preview chop**
-  button plays the result over the settings page itself. The defaults keep the classic look, with
-  one timing change: the slice now plays out whole — the blade crosses in the clear, the impact
-  flash pops as it exits, and the afterglow fades on the bright page — before the dark falls and
-  the menu arrives; the dark used to start mid-sweep. `prefers-reduced-motion` still collapses
-  everything to a plain fade regardless of the settings.
+- The chop can be tuned in Settings: an **Effect** switch turns the whole animation off — the dot
+  then opens the menu instantly — **Colour** is a row of named swatches (steel is the classic
+  blade, any other paints the blade, sparks and light), **Epicness** is one dial from a clean quiet
+  cut to a full action scene — the glow deepens first, then sparks fly, then light bursts from the
+  cut — and **Speed** runs from slow motion to double pace. Speed drives the slice itself; the
+  aftermath — the dark spilling open, the light, the embers and the menu — trails it, keeping its
+  slow drama however fast the blade is, and the two only fully agree at the slowest setting.
+  A **Preview chop** button plays the result over the settings page itself.
+- The chop itself now opens the page instead of fading it: the blade still crosses in the clear,
+  but the dark then spills out of the finished cut — the line splits into two glowing edges that
+  sweep apart and cool while the menu rises into the opening — where it used to fade in flat after
+  a pause. The screen-wide flash is gone at every setting; at higher epicness the impact is a burst
+  of light along the cut instead. `prefers-reduced-motion` still collapses everything to a plain
+  fade regardless of the settings.
 
 ## 2.1.0
 

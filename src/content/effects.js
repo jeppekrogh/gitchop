@@ -23,12 +23,14 @@ window.__gitchop = window.__gitchop || {};
   /**
    * One entry per control on the settings page; `value` is the default. The defaults reproduce the
    * effect exactly as it shipped before it was configurable, so nothing changes until a control
-   * moves. An entry with `swatches` renders as chips instead of a slider.
+   * moves. An entry with `swatches` renders as chips instead of a slider; one with `toggle`
+   * renders as an on/off switch.
    */
   const SLIDERS = [
-    { id: 'colour', label: 'Colour', min: 0, max: 360, value: 0, swatches: SWATCHES, hint: 'Steel is the classic blade; any other swatch paints the blade, sparks and flash.' },
-    { id: 'epicness', label: 'Epicness', min: 0, max: 100, value: 0, hint: 'From a clean quiet cut to a full action scene: more glow, then sparks, then a flash of light.' },
-    { id: 'speed', label: 'Speed', min: 25, max: 200, value: 100, hint: '100 is the classic pace; lower is slow motion.' },
+    { id: 'enabled', label: 'Effect', min: 0, max: 1, value: 1, toggle: true, hint: 'Off skips the whole animation: the dot opens the menu instantly.' },
+    { id: 'colour', label: 'Colour', min: 0, max: 360, value: 0, swatches: SWATCHES, hint: 'Steel is the classic blade; any other swatch paints the blade, sparks and light.' },
+    { id: 'epicness', label: 'Epicness', min: 0, max: 100, value: 0, hint: 'From a clean quiet cut to a full action scene: more glow, then sparks, then light bursting from the cut.' },
+    { id: 'speed', label: 'Speed', min: 25, max: 200, value: 100, hint: '100 is the classic pace; lower is slow motion. The slice follows it exactly, the aftermath keeps its drama at any speed.' },
   ];
 
   const DEFAULTS = Object.fromEntries(SLIDERS.map((slider) => [slider.id, slider.value]));
@@ -46,24 +48,33 @@ window.__gitchop = window.__gitchop || {};
 
   /**
    * What the sliders mean, in the stage's units. The epicness dial is staged rather than linear:
-   * the glow deepens from the first notch, sparks arrive early, and the flash joins from the
-   * middle — so every part of the range reads differently, and 100 is unmistakably not 60.
+   * the glow deepens from the first notch, sparks arrive early, and the flare joins from the
+   * middle — so every part of the range reads differently, and 100 is unmistakably not 60. The
+   * flare is a burst of light along the cut itself; there is no screen-wide flash at any setting.
    */
   function resolve(raw) {
     const fx = sanitize(raw);
     const e = fx.epicness / 100;
     const stage = (from, to, power = 1) => Math.min(1, Math.max(0, (e - from) / (to - from))) ** power;
-    const flash = stage(0.25, 0.9);
+    const flare = stage(0.25, 0.9);
+    const pace = 100 / fx.speed;
+    const slowest = 100 / SLIDERS.find((slider) => slider.id === 'speed').min;
     return {
-      speed: fx.speed,
+      enabled: fx.enabled === 1,
+      // The slice runs at the slider's pace exactly. The aftermath — the wound, the flare, the
+      // embers, the menu — follows the slider only a third of the way (in log space), pinned so
+      // the two coincide at the slowest setting: speed 25 is untouched, while a fast slice keeps
+      // its slow, deliberate endarkening instead of racing past it.
+      pace,
+      afterPace: slowest * (pace / slowest) ** 0.35,
       hue: fx.colour,
       tint: fx.colour === 0 ? 0 : 80,
       bloomHeight: Math.round(26 + 110 * stage(0, 1, 1.3)),
       haloSize: Math.round(6 + 14 * e),
       sparkCount: Math.round(170 * stage(0.08, 1, 1.25)),
       sparkEnergy: 1 + 1.8 * e,
-      flashPeak: flash,
-      flashSpread: Math.round(70 + 30 * flash),
+      flarePeak: flare,
+      flareHeight: Math.round(120 + 300 * flare),
     };
   }
 

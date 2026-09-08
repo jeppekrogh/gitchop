@@ -16,6 +16,7 @@ let saveTimer = null;
 let lastWritten = '';
 let statusTimer = null;
 let stage = null;
+let slidersEl = null;
 const updaters = new Map();
 
 function flash(text) {
@@ -47,6 +48,7 @@ function scheduleCommit() {
 }
 
 function shown(spec, value) {
+  if (spec.toggle) return value === 1 ? 'on' : 'off';
   if (spec.swatches) return spec.swatches.find((swatch) => swatch.value === value)?.name ?? `${value}°`;
   if (spec.id === 'speed') return `${value}%`;
   return String(value);
@@ -54,10 +56,44 @@ function shown(spec, value) {
 
 function reflect() {
   for (const update of updaters.values()) update();
+  if (slidersEl) slidersEl.dataset.off = String(effects.enabled === 0);
 }
 
 function chipColour(value) {
   return value === 0 ? '#f2f5f8' : `hsl(${value} 75% 60%)`;
+}
+
+function buildToggle(spec) {
+  const row = document.createElement('div');
+  row.className = 'slider slider-toggle';
+  row.title = spec.hint;
+
+  const label = document.createElement('span');
+  label.className = 'slider-label';
+  label.id = `fx-${spec.id}-label`;
+  label.textContent = spec.label;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'switch';
+  button.setAttribute('role', 'switch');
+  button.setAttribute('aria-labelledby', label.id);
+  button.addEventListener('click', () => {
+    effects[spec.id] = effects[spec.id] === 1 ? 0 : 1;
+    reflect();
+    commit();
+  });
+
+  const output = document.createElement('output');
+
+  updaters.set(spec.id, () => {
+    const on = effects[spec.id] === 1;
+    button.dataset.on = String(on);
+    button.setAttribute('aria-checked', String(on));
+    output.textContent = shown(spec, effects[spec.id]);
+  });
+  row.append(label, button, output);
+  return row;
 }
 
 function buildSwatches(spec) {
@@ -99,6 +135,7 @@ function buildSwatches(spec) {
       const selected = value === effects[spec.id];
       chip.dataset.selected = String(selected);
       chip.setAttribute('aria-checked', String(selected));
+      chip.disabled = effects.enabled === 0;
     }
     output.textContent = shown(spec, effects[spec.id]);
   });
@@ -107,6 +144,7 @@ function buildSwatches(spec) {
 }
 
 function buildSlider(spec) {
+  if (spec.toggle) return buildToggle(spec);
   if (spec.swatches) return buildSwatches(spec);
 
   const row = document.createElement('div');
@@ -136,6 +174,7 @@ function buildSlider(spec) {
 
   updaters.set(spec.id, () => {
     input.value = String(effects[spec.id]);
+    input.disabled = effects.enabled === 0;
     output.textContent = shown(spec, effects[spec.id]);
   });
   row.append(label, input, output);
@@ -150,13 +189,17 @@ function preview() {
   if (stage) return;
   const fx = sanitize(effects);
   const play = resolve(fx);
-  const pace = 100 / play.speed;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const running = gc.createStage({ reduced, effects: fx });
   stage = running;
 
-  // Long enough to see the dark settle — and the last ember die, when sparks are on.
-  const linger = setTimeout(close, Math.max(640, play.sparkCount > 0 ? 1500 : 0) * pace + 600);
+  // Long enough to see the dark settle — and the last ember die, when sparks are on: the slice
+  // runs at pace, its aftermath at the slower afterPace. With the effect switched off there is
+  // only the instant scrim, so a short hold shows exactly that.
+  const linger = setTimeout(
+    close,
+    play.enabled ? 240 * play.pace + Math.max(640, play.sparkCount > 0 ? 1500 : 0) * play.afterPace + 600 : 900,
+  );
   function onKey(event) {
     if (event.key === 'Escape') close();
   }
@@ -176,12 +219,14 @@ function render() {
   const note = document.createElement('p');
   note.className = 'note';
   note.textContent =
-    'How the page is chopped open when you press the dot. A swatch paints the blade, epicness turns ' +
-    'one clean cut into a full action scene, and speed slows the whole thing down or hurries it. ' +
+    'How the page is chopped open when you press the dot. The switch turns the animation off ' +
+    'altogether — the menu then just opens. A swatch paints the blade, epicness turns one clean ' +
+    'cut into a full action scene, and speed slows the whole thing down or hurries it. ' +
     'Changes save on their own, and Preview plays the result right here.';
 
   const sliders = document.createElement('div');
   sliders.className = 'sliders';
+  slidersEl = sliders;
   for (const spec of SLIDERS) sliders.append(buildSlider(spec));
 
   const previewBtn = document.createElement('button');
