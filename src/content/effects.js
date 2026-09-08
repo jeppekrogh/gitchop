@@ -4,9 +4,13 @@ window.__gitchop = window.__gitchop || {};
   const gc = window.__gitchop;
 
   /**
-   * The colour control is this row of named chips rather than a hue slider — a swatch you can see
-   * beats a number of degrees. The stored value is still a hue (steel is the special 0), so any
-   * hue that arrives from elsewhere keeps working; these are just the ones the page offers.
+   * The colour control is these named chips rather than a hue slider — a swatch you can see beats
+   * a number of degrees. The stored value is still a hue (steel is the special 0), so any hue that
+   * arrives from elsewhere keeps working; these are just the ones the page offers. The chips lay
+   * out nine to a row, so the list comes in nines: the first row is the coarse sweep of the wheel
+   * that shipped, the second fills the gaps between those, and both read left to right in hue
+   * order. Every chromatic hue sits at least 15° from every other, or the chips stop being
+   * distinguishable and the second row is just decoration.
    */
   const SWATCHES = [
     { name: 'steel', value: 0 },
@@ -18,6 +22,15 @@ window.__gitchop = window.__gitchop || {};
     { name: 'azure', value: 210 },
     { name: 'violet', value: 275 },
     { name: 'pink', value: 320 },
+    { name: 'citron', value: 72 },
+    { name: 'lime', value: 96 },
+    { name: 'fern', value: 118 },
+    { name: 'jade', value: 160 },
+    { name: 'sky', value: 195 },
+    { name: 'cobalt', value: 232 },
+    { name: 'indigo', value: 253 },
+    { name: 'magenta', value: 300 },
+    { name: 'rose', value: 340 },
   ];
 
   /**

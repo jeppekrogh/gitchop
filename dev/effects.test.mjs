@@ -86,6 +86,8 @@ const colourSpec = EFFECTS.SLIDERS.find((slider) => slider.id === 'colour');
 assert.equal(colourSpec.swatches, EFFECTS.SWATCHES, 'the colour control renders the shared swatches');
 assert.ok(EFFECTS.SWATCHES.length >= 6, 'a real choice of swatches');
 assert.deepEqual(EFFECTS.SWATCHES[0], { name: 'steel', value: 0 }, 'steel leads and is the default');
+// The chips are laid out nine to a row, so a part-filled row would leave a ragged gap on the card.
+assert.equal(EFFECTS.SWATCHES.length % 9, 0, `the swatches fill whole rows of nine (${EFFECTS.SWATCHES.length})`);
 const seenValues = new Set();
 for (const swatch of EFFECTS.SWATCHES) {
   assert.ok(swatch.name && typeof swatch.name === 'string', 'every swatch has a name to show');
@@ -95,6 +97,20 @@ for (const swatch of EFFECTS.SWATCHES) {
   const tinted = EFFECTS.resolve({ colour: swatch.value });
   if (swatch.value === 0) assert.equal(tinted.tint, 0, 'steel stays untinted');
   else assert.ok(tinted.tint > 0, `${swatch.name} tints the blade`);
+}
+
+// Two chips a viewer cannot tell apart are one chip and a lie, so every pair of hues keeps its
+// distance around the wheel — steel is exempt: it is the achromatic one, not a hue.
+const hues = EFFECTS.SWATCHES.filter((swatch) => swatch.value !== 0);
+for (const one of hues) {
+  for (const other of hues) {
+    if (one === other) continue;
+    const apart = Math.abs(one.value - other.value) % 360;
+    assert.ok(
+      Math.min(apart, 360 - apart) >= 15,
+      `${one.name} and ${other.name} are too close to tell apart (${one.value}° vs ${other.value}°)`,
+    );
+  }
 }
 
 // The dial is staged: glow and sparks lead, the flare joins from the middle.

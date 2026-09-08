@@ -6,13 +6,13 @@ it from.
 ## Unreleased
 
 - The chop can be tuned in Settings: an **Effect** switch turns the whole animation off — the dot
-  then opens the menu instantly — **Colour** is a row of named swatches (steel is the classic
-  blade, any other paints the blade, sparks and light), **Epicness** is one dial from a clean quiet
-  cut to a full action scene — the glow deepens first, then sparks fly, then light bursts from the
-  cut — and **Speed** runs from slow motion to double pace. Speed drives the slice itself; the
-  aftermath — the dark spilling open, the light, the embers and the menu — trails it, keeping its
-  slow drama however fast the blade is, and the two only fully agree at the slowest setting.
-  A **Preview chop** button plays the result over the settings page itself.
+  then opens the menu instantly — **Colour** is two rows of nine named swatches (steel is the
+  classic blade, any other paints the blade, sparks and light), **Epicness** is one dial from a
+  clean quiet cut to a full action scene — the glow deepens first, then sparks fly, then light
+  bursts from the cut — and **Speed** runs from slow motion to double pace. Speed drives the slice
+  itself; the aftermath — the dark spilling open, the light, the embers and the menu — trails it,
+  keeping its slow drama however fast the blade is, and the two only fully agree at the slowest
+  setting. A **Preview chop** button plays the result over the settings page itself.
 - The chop itself now opens the page instead of fading it: the blade still crosses in the clear,
   but the dark then spills out of the finished cut — the line splits into two glowing edges that
   sweep apart and cool while the menu rises into the opening — where it used to fade in flat after

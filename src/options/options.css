@@ -523,8 +523,8 @@ kbd {
 }
 
 .swatches {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(9, 18px);
   gap: 7px;
   padding: 2px 0;
 }
