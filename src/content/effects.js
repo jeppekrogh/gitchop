@@ -62,11 +62,13 @@ window.__gitchop = window.__gitchop || {};
     return {
       enabled: fx.enabled === 1,
       // The slice runs at the slider's pace exactly. The aftermath — the wound, the flare, the
-      // embers, the menu — follows the slider only a third of the way (in log space), pinned so
+      // embers, the menu — follows the slider only a fifth of the way (in log space), pinned so
       // the two coincide at the slowest setting: speed 25 is untouched, while a fast slice keeps
-      // its slow, deliberate endarkening instead of racing past it.
+      // its slow, deliberate endarkening instead of racing past it. This exponent is what sets
+      // the beat between the blade leaving the screen and the dark arriving: the flatter it is,
+      // the more of the effect that beat is at speed, which is where a short one shows.
       pace,
-      afterPace: slowest * (pace / slowest) ** 0.35,
+      afterPace: slowest * (pace / slowest) ** 0.2,
       hue: fx.colour,
       tint: fx.colour === 0 ? 0 : 80,
       bloomHeight: Math.round(26 + 110 * stage(0, 1, 1.3)),

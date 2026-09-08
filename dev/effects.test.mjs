@@ -50,18 +50,30 @@ assert.ok(!('flashPeak' in calm) && !('flashSpread' in calm), 'the screen-wide f
 // The slice follows the speed slider exactly; the aftermath trails it, so a fast slice keeps its
 // slow drama. The two agree at the slowest setting, where the whole effect is one slow motion.
 assert.equal(calm.pace, 1, 'speed 100 is the classic slice pace');
-assert.ok(calm.afterPace > 2 && calm.afterPace < 3, `the classic aftermath stays near slow motion (${calm.afterPace})`);
 const slowest = EFFECTS.resolve({ speed: 25 });
 assert.equal(slowest.pace, 4, 'the slowest slice is four times the classic');
 assert.equal(slowest.afterPace, slowest.pace, 'at the slowest speed the aftermath and the slice agree');
+assert.ok(
+  calm.afterPace > slowest.afterPace * 0.7 && calm.afterPace < slowest.afterPace,
+  `the classic aftermath keeps most of the slowest setting's drama (${calm.afterPace})`,
+);
 const fastest = EFFECTS.resolve({ speed: 200 });
 assert.equal(fastest.pace, 0.5, 'double speed halves the slice');
-assert.ok(fastest.afterPace > 1.8, `even at double speed the aftermath stays deliberate (${fastest.afterPace})`);
+assert.ok(
+  fastest.afterPace > slowest.afterPace * 0.6,
+  `even at double speed the beat after the impact barely shortens (${fastest.afterPace})`,
+);
 let quicker = slowest;
 for (const speed of [50, 100, 150, 200]) {
   const next = EFFECTS.resolve({ speed });
   assert.ok(next.afterPace < quicker.afterPace, `the aftermath still answers the dial at speed ${speed}`);
   assert.ok(next.afterPace >= next.pace, `the aftermath is never faster than the slice at speed ${speed}`);
+  // The faster the blade, the larger the share of the whole effect that the beat after it is —
+  // this is what keeps the dark from treading on the heels of a quick slice.
+  assert.ok(
+    next.afterPace / next.pace > quicker.afterPace / quicker.pace,
+    `the beat after the slice grows against it at speed ${speed}`,
+  );
   quicker = next;
 }
 
