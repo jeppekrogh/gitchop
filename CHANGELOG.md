@@ -3,7 +3,7 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
-## Unreleased
+## 2.3.0
 
 - A **Menu delay** slider in Settings sets the beat between the blade leaving the screen and the
   menu rising into the cut — from none at all, where the menu is there the instant the cut lands,
