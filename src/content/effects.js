@@ -44,6 +44,7 @@ window.__gitchop = window.__gitchop || {};
     { id: 'colour', label: 'Colour', min: 0, max: 360, value: 0, swatches: SWATCHES, hint: 'Steel is the classic blade; any other swatch paints the blade, sparks and light.' },
     { id: 'epicness', label: 'Epicness', min: 0, max: 100, value: 0, hint: 'From a clean quiet cut to a full action scene: more glow, then sparks, then light bursting from the cut.' },
     { id: 'speed', label: 'Speed', min: 25, max: 200, value: 100, hint: '100 is the classic pace; lower is slow motion. The slice follows it exactly, the aftermath keeps its drama at any speed.' },
+    { id: 'menuDelay', label: 'Menu delay', min: 0, max: 400, value: 140, hint: 'How long the menu waits after the blade leaves the screen. At 0 it rises the instant the cut lands; at the top it waits for the dark to settle first. Shown as the real wait at the current speed.' },
   ];
 
   const DEFAULTS = Object.fromEntries(SLIDERS.map((slider) => [slider.id, slider.value]));
@@ -82,6 +83,11 @@ window.__gitchop = window.__gitchop || {};
       // the more of the effect that beat is at speed, which is where a short one shows.
       pace,
       afterPace: slowest * (pace / slowest) ** 0.2,
+      // Measured from the impact on the aftermath's clock, like the wound and the scrim are, so
+      // the menu keeps its place in the sequence at every speed: a slider that named a fixed
+      // number of milliseconds would have the menu arrive into a barely-opened cut in slow
+      // motion. The settings page multiplies it out and shows the real wait.
+      panelAt: fx.menuDelay,
       hue: fx.colour,
       tint: fx.colour === 0 ? 0 : 80,
       bloomHeight: Math.round(26 + 110 * stage(0, 1, 1.3)),

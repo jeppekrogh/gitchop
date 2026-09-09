@@ -37,7 +37,9 @@ then opens the menu instantly. **Colour** is eighteen named swatches — steel i
 any other paints the blade, sparks and light. **Epicness** is one dial from a clean quiet cut to a
 full action scene: the glow deepens first, then sparks fly, then light bursts from the cut.
 **Speed** slows the slice into slow motion or hurries it — the aftermath keeps its
-slow drama at any speed. **Preview chop**
+slow drama at any speed. **Menu delay** is the beat between the blade leaving the screen and the
+menu rising into the cut, shown as the wait it actually produces: nothing at all at one end, long
+enough for the dark to settle first at the other. **Preview chop**
 plays the result over the settings page before you leave it, saved or not. The defaults are the
 classic cut, and `prefers-reduced-motion` keeps everything to a plain fade no matter the settings.
 

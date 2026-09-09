@@ -77,6 +77,27 @@ for (const speed of [50, 100, 150, 200]) {
   quicker = next;
 }
 
+// The menu's beat after the impact is the user's to set, and it rides the aftermath's clock like
+// the wound and the scrim do — so the wait it produces stretches with slow motion rather than
+// leaving the menu to arrive into a cut that has barely opened.
+const delaySpec = EFFECTS.SLIDERS.find((slider) => slider.id === 'menuDelay');
+assert.equal(delaySpec.value, 140, 'the classic beat is what the slider defaults to');
+assert.equal(delaySpec.min, 0, 'the menu can rise the instant the blade leaves');
+assert.equal(calm.panelAt, 140, 'the default reproduces the beat that shipped');
+assert.equal(EFFECTS.resolve({ menuDelay: 0 }).panelAt, 0, 'no wait at all is a setting');
+assert.equal(EFFECTS.sanitize({ menuDelay: 9000 }).menuDelay, delaySpec.max, 'the wait cannot run away');
+assert.equal(EFFECTS.sanitize({ menuDelay: -50 }).menuDelay, 0, 'nor can it go negative');
+for (const speed of [25, 100, 200]) {
+  const at = EFFECTS.resolve({ speed, menuDelay: 200 });
+  assert.equal(at.panelAt, 200, `the setting itself is untouched by speed ${speed}`);
+  assert.ok(at.panelAt * at.afterPace > 200, `the wait it produces keeps the aftermath's drama at speed ${speed}`);
+}
+assert.ok(
+  EFFECTS.resolve({ speed: 25, menuDelay: 140 }).panelAt * slowest.afterPace >
+    calm.panelAt * calm.afterPace,
+  'slow motion holds the menu back longer than the classic pace does',
+);
+
 const painted = EFFECTS.resolve({ colour: 210 });
 assert.equal(painted.hue, 210);
 assert.ok(painted.tint > 0, 'any colour above zero tints the blade');

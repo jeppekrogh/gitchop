@@ -14,7 +14,6 @@ window.__gitchop = window.__gitchop || {};
   const WOUND = 320;
   const SCRIM_AT = WOUND * 0.75;
   const SCRIM_IN = 180;
-  const PANEL_AT = 140;
   const EASE_BLADE = 'cubic-bezier(0.28, 0.4, 0.2, 1)';
   const EASE_SOFT = 'cubic-bezier(0.32, 0.72, 0, 1)';
   const EASE_BACK = 'cubic-bezier(0.5, 0, 0.2, 1)';
@@ -284,6 +283,12 @@ window.__gitchop = window.__gitchop || {};
         return dark.finished.catch(() => {});
       },
 
+      /**
+       * The beat between the blade leaving the screen and the menu rising is the one timing the
+       * settings page owns outright (fx.panelAt) — the rest of the aftermath keeps its tuned
+       * constants. Reduced motion and the off switch skip the wait entirely: there is no cut for
+       * the menu to rise into.
+       */
       revealPanel(panel) {
         panelEl = panel;
         return track(
@@ -295,7 +300,7 @@ window.__gitchop = window.__gitchop || {};
           {
             duration: instant ? 90 : reduced ? 120 : 240,
             easing: EASE_SOFT,
-            delay: quick ? 0 : SWEEP * pace + PANEL_AT * afterPace,
+            delay: quick ? 0 : SWEEP * pace + fx.panelAt * afterPace,
           },
           ['opacity', 'transform'],
         ).finished.catch(() => {});

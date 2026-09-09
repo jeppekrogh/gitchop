@@ -51,6 +51,9 @@ function shown(spec, value) {
   if (spec.toggle) return value === 1 ? 'on' : 'off';
   if (spec.swatches) return spec.swatches.find((swatch) => swatch.value === value)?.name ?? `${value}°`;
   if (spec.id === 'speed') return `${value}%`;
+  // The stored delay is on the aftermath's clock, which the speed slider stretches; the number
+  // worth reading is the wait it actually produces, so it is the one shown.
+  if (spec.id === 'menuDelay') return `${Math.round(value * resolve(effects).afterPace)} ms`;
   return String(value);
 }
 
@@ -165,9 +168,11 @@ function buildSlider(spec) {
   const output = document.createElement('output');
   output.htmlFor = input.id;
 
+  // Every row is redrawn, not just this one: the menu delay is shown in real milliseconds, so
+  // dragging speed changes a number that lives on another row.
   input.addEventListener('input', () => {
     effects[spec.id] = Number(input.value);
-    output.textContent = shown(spec, effects[spec.id]);
+    reflect();
     scheduleCommit();
   });
   input.addEventListener('change', commit);
@@ -179,6 +184,50 @@ function buildSlider(spec) {
   });
   row.append(label, input, output);
   return row;
+}
+
+/**
+ * The options page never loads menu.js — there is no GitHub page to read a context from — so the
+ * preview raises an empty shell of the panel instead, on the stage's own schedule. Without it the
+ * menu delay would be the one setting the preview could not show: a beat between two things, with
+ * only the first of them on screen.
+ */
+function standIn() {
+  const panel = document.createElement('div');
+  panel.className = 'gc-panel';
+  panel.setAttribute('aria-hidden', 'true');
+
+  const head = document.createElement('div');
+  head.className = 'gc-head';
+  const wordmark = document.createElement('span');
+  wordmark.className = 'gc-wordmark';
+  const chop = document.createElement('b');
+  chop.textContent = 'chop';
+  wordmark.append(document.createTextNode('git'), chop);
+  const context = document.createElement('span');
+  context.className = 'gc-context';
+  context.textContent = 'github.com';
+  head.append(wordmark, context);
+
+  const filter = document.createElement('input');
+  filter.className = 'gc-filter';
+  filter.type = 'text';
+  filter.placeholder = 'Filter links, or search repositories…';
+  filter.readOnly = true;
+  filter.tabIndex = -1;
+
+  const list = document.createElement('ul');
+  list.className = 'gc-list';
+
+  const foot = document.createElement('div');
+  foot.className = 'gc-foot';
+  const keys = document.createElement('span');
+  keys.className = 'gc-keys';
+  keys.textContent = '↑↓ move · ↵ open · esc close';
+  foot.append(keys);
+
+  panel.append(head, filter, list, foot);
+  return panel;
 }
 
 /**
@@ -207,12 +256,15 @@ function preview() {
   running.menuLayer.addEventListener('mousedown', close);
   window.addEventListener('keydown', onKey);
 
-  // The stage itself says when the dark has settled, so the preview leaves on its own the moment
-  // the effect is over — there is nothing behind it to look at, unlike on GitHub where the menu
-  // is waiting in the opening. The hold after that is only the beat the last ember needs at this
-  // speed. Nothing here restates the stage's timings: a guess that outlives the animation is a
-  // black screen the user has to click away.
-  running.chop().then(() => {
+  const panel = standIn();
+  running.menuLayer.append(panel);
+
+  // The stage itself says when the dark has settled and when the menu has arrived, so the preview
+  // leaves on its own the moment the effect is over. The hold after that is only the beat the last
+  // ember needs at this speed. Nothing here restates the stage's timings: a guess that outlives
+  // the animation is a black screen the user has to click away, and a guess that undercuts it
+  // would cut off the very delay being tuned.
+  Promise.all([running.chop(), running.revealPanel(panel)]).then(() => {
     if (stage !== running) return;
     linger = setTimeout(close, play.enabled ? 220 * play.afterPace : 320);
   });
@@ -225,6 +277,7 @@ function render() {
     'How the page is chopped open when you press the dot. The switch turns the animation off ' +
     'altogether — the menu then just opens. A swatch paints the blade, epicness turns one clean ' +
     'cut into a full action scene, and speed slows the whole thing down or hurries it. ' +
+    'Menu delay is how long the menu waits in the opening cut before it rises. ' +
     'Changes save on their own, and Preview plays the result right here.';
 
   const sliders = document.createElement('div');

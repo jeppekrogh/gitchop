@@ -3,6 +3,18 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
+## Unreleased
+
+- A **Menu delay** slider in Settings sets the beat between the blade leaving the screen and the
+  menu rising into the cut — from none at all, where the menu is there the instant the cut lands,
+  to long enough for the dark to settle first. It was a fixed 140 ms on the aftermath's clock; the
+  default still is, so nothing changes until the slider moves. Like the rest of the aftermath it
+  stretches with **Speed**, and the settings page shows the wait that produces rather than the
+  stored number, so the figure next to the slider is the one you are waiting through.
+- **Preview chop** now raises an empty panel where the menu would be. The delay is a beat between
+  two things and the preview only ever showed the first of them; it also stays until the menu has
+  arrived, instead of leaving as soon as the dark had settled.
+
 ## 2.2.1
 
 - Firefox 140 is now the minimum. The `data_collection_permissions` block in the Gecko settings —

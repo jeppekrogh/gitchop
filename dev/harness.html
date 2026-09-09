@@ -21,7 +21,7 @@
         background: rgba(255,255,255,.9); border: 1px solid #d0d7de; padding: 10px 12px;
       }
       #fx b { font-weight: 600; letter-spacing: 0.04em; }
-      #fx .fxrow { display: grid; grid-template-columns: 64px 158px 52px; gap: 8px; align-items: center; }
+      #fx .fxrow { display: grid; grid-template-columns: 80px 158px 52px; gap: 8px; align-items: center; }
       #fx input[type="checkbox"] { justify-self: start; margin: 0; }
       #fx output { text-align: right; }
       #fx .chips { display: grid; grid-template-columns: repeat(9, 14px); gap: 4px; }
@@ -99,8 +99,10 @@
 
       const store = {
         // Enough epicness to show the new effects off, blade classic; override any slider in the
-        // URL, e.g. harness.html?colour=210&epicness=90&speed=50, or ?enabled=0 for the instant open.
-        effects: { enabled: 1, colour: 0, epicness: 60, speed: 100 },
+        // URL, e.g. harness.html?colour=210&epicness=90&speed=50, ?menuDelay=0 for a menu that
+        // rises the instant the blade lands, or ?enabled=0 for the instant open. Every slider
+        // needs its key here, or the URL has nothing to override.
+        effects: { enabled: 1, colour: 0, epicness: 60, speed: 100, menuDelay: 140 },
         links: [
           { id: '1', icon: '🔔', label: 'Notifications', url: 'https://github.com/notifications' },
           { id: '2', icon: '🧩', label: 'Your pull requests', url: 'https://github.com/pulls' },
