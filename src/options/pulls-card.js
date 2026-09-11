@@ -1,0 +1,169 @@
+import { api } from '../lib/links.js';
+import { SWITCHES } from '../lib/pulls.js';
+
+const host = document.getElementById('pulls');
+const statusEl = document.getElementById('pulls-status');
+
+let statusTimer = null;
+let busy = false;
+let current = null;
+
+function flash(text) {
+  statusEl.textContent = text;
+  statusEl.dataset.shown = 'true';
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => {
+    statusEl.dataset.shown = 'false';
+  }, 2600);
+}
+
+async function ask(message) {
+  const response = await api.runtime.sendMessage(message);
+  if (!response?.ok) throw new Error(response?.error ?? 'The background script did not answer.');
+  return response;
+}
+
+function when(iso) {
+  if (!iso) return 'never';
+  const stamp = new Date(iso);
+  return Number.isNaN(stamp.valueOf()) ? 'never' : stamp.toLocaleString();
+}
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
+}
+
+function button(label, { primary = false } = {}) {
+  const node = element('button', `btn${primary ? ' btn-primary' : ''}`, label);
+  node.type = 'button';
+  return node;
+}
+
+async function guard(node, work) {
+  if (busy) return;
+  busy = true;
+  const label = node.textContent;
+  node.textContent = 'working…';
+  try {
+    await work();
+  } catch (error) {
+    flash('failed');
+    render(current, String(error.message ?? error));
+    return;
+  } finally {
+    busy = false;
+    node.textContent = label;
+  }
+}
+
+/** One switch per setting, in the same dress as the chop effect's own. */
+function switchRow(spec, state) {
+  const row = element('div', 'slider slider-toggle');
+  row.title = spec.hint;
+
+  const label = element('span', 'slider-label', spec.label);
+  label.id = `pulls-${spec.id}-label`;
+
+  const toggle = element('button', 'switch');
+  toggle.type = 'button';
+  toggle.setAttribute('role', 'switch');
+  toggle.setAttribute('aria-labelledby', label.id);
+  const on = state.settings[spec.id] === 1;
+  toggle.dataset.on = String(on);
+  toggle.setAttribute('aria-checked', String(on));
+  toggle.addEventListener('click', () =>
+    guard(toggle, async () => {
+      const result = await ask({ type: 'gitchop:pulls:settings', patch: { [spec.id]: on ? 0 : 1 } });
+      flash(on ? 'off' : 'on');
+      current = result;
+      render(result);
+    }),
+  );
+
+  row.append(label, toggle, element('output', null, on ? 'on' : 'off'));
+  return row;
+}
+
+function render(state, error) {
+  host.textContent = '';
+  const wrap = element('div', 'card-body');
+
+  wrap.append(
+    element(
+      'p',
+      'note',
+      'A second column beside the menu: feedback on your pull requests — approved, or changes ' +
+        'requested — then the pull requests waiting on you for a review, then yours still waiting on ' +
+        'others. It paints the instant the menu opens and refreshes behind it; → or Tab crosses into ' +
+        'it, ← comes back, and typing anything comes straight back to the search.',
+    ),
+  );
+
+  if (!state?.hasToken) {
+    wrap.append(
+      element(
+        'p',
+        'note',
+        'It needs a token that can read pull requests: the classic token above with repo does, and so ' +
+          'does a fine-grained one with Pull requests: read-only for each owner. Without one there is ' +
+          'no column — the menu is exactly what it was.',
+      ),
+    );
+    host.append(wrap);
+    return;
+  }
+
+  const switches = element('div', 'sliders');
+  for (const spec of SWITCHES) switches.append(switchRow(spec, state));
+  wrap.append(switches);
+
+  const lanes = state.lanes ?? [];
+  if (state.settings.enabled === 1 && lanes.some((lane) => lane.pulls !== null)) {
+    const facts = element('dl', 'facts');
+    for (const lane of lanes) facts.append(element('dt', null, lane.title), element('dd', null, String(lane.total ?? 0)));
+    facts.append(element('dt', null, 'Refreshed'), element('dd', null, when(state.fetchedAt)));
+    wrap.append(facts);
+  }
+
+  if (error ?? state.error) wrap.append(element('p', 'error', error ?? state.error));
+  else if (state.partial) wrap.append(element('p', 'error', `One token did not answer: ${state.partial}`));
+
+  if (state.settings.enabled === 1) {
+    wrap.append(
+      element(
+        'p',
+        'note',
+        'A fine-grained token that was never granted Pull requests shows empty lanes rather than an ' +
+          'error — GitHub returns less, not a refusal. If the lanes stay empty while github.com/pulls ' +
+          'does not, that is why.',
+      ),
+    );
+
+    const refresh = button('Refresh now', { primary: true });
+    refresh.addEventListener('click', () =>
+      guard(refresh, async () => {
+        const result = await ask({ type: 'gitchop:pulls:refresh' });
+        flash(result.error ? 'failed' : 'refreshed');
+        current = result;
+        render(result);
+      }),
+    );
+    const actions = element('div', 'actions');
+    actions.append(refresh);
+    wrap.append(actions);
+  }
+
+  host.append(wrap);
+}
+
+export async function load() {
+  try {
+    current = await ask({ type: 'gitchop:pulls' });
+    render(current);
+  } catch (error) {
+    render(current, String(error.message ?? error));
+  }
+}

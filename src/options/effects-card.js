@@ -199,15 +199,10 @@ function standIn() {
 
   const head = document.createElement('div');
   head.className = 'gc-head';
-  const wordmark = document.createElement('span');
-  wordmark.className = 'gc-wordmark';
-  const chop = document.createElement('b');
-  chop.textContent = 'chop';
-  wordmark.append(document.createTextNode('git'), chop);
-  const context = document.createElement('span');
-  context.className = 'gc-context';
-  context.textContent = 'github.com';
-  head.append(wordmark, context);
+  const title = document.createElement('span');
+  title.className = 'gc-title';
+  title.textContent = 'Links';
+  head.append(title);
 
   const filter = document.createElement('input');
   filter.className = 'gc-filter';
@@ -223,7 +218,15 @@ function standIn() {
   foot.className = 'gc-foot';
   const keys = document.createElement('span');
   keys.className = 'gc-keys';
-  keys.textContent = '↑↓ move · ↵ open · esc close';
+  for (const [key, label] of [['enter', 'open'], ['esc', 'close']]) {
+    const hint = document.createElement('span');
+    hint.className = 'gc-hint';
+    const chip = document.createElement('kbd');
+    chip.className = 'gc-key';
+    chip.textContent = key;
+    hint.append(chip, document.createTextNode(label));
+    keys.append(hint);
+  }
   foot.append(keys);
 
   panel.append(head, filter, list, foot);

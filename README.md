@@ -1,6 +1,7 @@
 # gitchop
 
-Press <kbd>.</kbd> on GitHub for your own links and instant repository search.
+Press <kbd>.</kbd> on GitHub for your own links, instant repository search, and the pull requests
+waiting on you.
 
 **[Install for Firefox](https://addons.mozilla.org/en-US/firefox/addon/gitchop/)**
 
@@ -20,10 +21,11 @@ install, unless site access has been narrowed to *on click*.
 | <kbd>.</kbd> | Open the menu |
 | type | Filter your links; 3 characters or more also searches repositories |
 | <kbd>↑</kbd> <kbd>↓</kbd> | Move |
-| <kbd>→</kbd> | Go inside a repository — its pull requests or issues |
-| <kbd>←</kbd> | Back out |
+| <kbd>→</kbd> | Go inside a repository — its pull requests or issues; on any other row, across to the pull requests |
+| <kbd>←</kbd> | Back out, or back to the menu |
 | <kbd>↵</kbd> | Open |
 | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>↵</kbd> | Open in a new tab |
+| <kbd>Tab</kbd> | Across to the pull requests and back, from any row |
 | <kbd>Esc</kbd> | Close |
 
 `Add this page` and `Settings` are rows in the list; type `add` or `settings` to reach them.
@@ -72,6 +74,26 @@ and matches it locally.
 A classic token with the `repo` scope is simplest and covers every organisation. A fine-grained token
 with **Metadata: read-only** grants less but covers one organisation each; add as many as you need.
 
+## Pull requests
+
+With a token saved, a second column rises beside the menu: the pull requests that concern you, in
+three lanes. **Feedback on your PRs** is your work that has a verdict — approved, or changes
+requested. **Waiting on you** is what others need your review for. **Waiting on others** is your work
+that nobody has answered yet. Every open pull request you are party to lands in exactly one of them.
+
+The search keeps focus; the column is there to be looked at. <kbd>→</kbd> or <kbd>Tab</kbd> crosses
+into it, <kbd>↑</kbd> <kbd>↓</kbd> walk the lanes, <kbd>↵</kbd> opens, <kbd>←</kbd> comes back, and
+typing anything drops you straight back into the search with the character you typed. Every lane
+shows everything it holds — the column scrolls when there is more than fits — so nothing sends you off
+to a GitHub list page. It paints from its last snapshot the instant the menu opens and refreshes behind
+it; the toolbar icon carries the number waiting on you, so you know before you press the key.
+Settings has switches for the column itself, the badge, and whether drafts count.
+
+It needs a token that can read pull requests: a classic token with `repo`, or a fine-grained one with
+**Pull requests: read-only**. A fine-grained token that was only granted Metadata is enough for the
+index but shows the lanes empty rather than refusing — GitHub returns less, not an error. Viewports
+narrower than about 980 px have no room for it, and the menu is what it always was.
+
 ## Backup
 
 Links live in the browser profile, and go with the extension if you remove it. Connect a secret gist
@@ -85,7 +107,7 @@ No build step for the code — the files in `src/` are what runs. Packaging only
 `manifest.json` each browser gets, since the two disagree about the background script.
 
 ```sh
-node dev/context.test.mjs && node dev/repos.test.mjs   # tests
+node dev/context.test.mjs && node dev/repos.test.mjs && node dev/effects.test.mjs && node dev/pulls.test.mjs
 node dev/build.mjs all                                 # dist/gitchop-<version>-<browser>.<ext>
 node dev/build.mjs chrome --no-zip                     # unpacked, for chrome://extensions
 open dev/harness.html                                  # the menu and effect sliders, without installing

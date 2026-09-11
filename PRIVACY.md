@@ -12,6 +12,7 @@ of any kind beyond GitHub itself.
 | Your links (icon, label, URL) | `storage.sync` | Only to your own gist, and only if you connect one |
 | Your GitHub token, if you add one | `storage.local` | Only to `api.github.com`, as an authorization header |
 | A list of repositories you can access | `storage.local` | No — never sent anywhere |
+| Your open pull requests — title, number, repository, author, review state | `storage.local` | No — never sent anywhere |
 | Which gist to use, and when it last synced | `storage.local` | No |
 
 The repository list holds names, URLs, descriptions and the private and archived flags — the same
@@ -20,8 +21,9 @@ found by typing, which GitHub's search will not do, and so that matching costs n
 written on this machine and read on this machine. **Clear** in the settings page deletes it, and
 removing the token deletes it too.
 
-gitchop never reads repository contents, code, commits, issues or pull requests. It asks GitHub for
-the list of repositories and nothing else.
+gitchop never reads repository contents, code, commits or issues. Beyond the repository list it asks
+GitHub for one more thing, the open pull requests you are party to, for the column beside the menu — see below. It
+reads their titles and state, never their diffs or comments.
 
 The token is kept in `storage.local` rather than `storage.sync` specifically so that it is never
 handed to Mozilla's sync servers. Every request to GitHub is made from the extension's background
@@ -33,6 +35,13 @@ script, so no web page — GitHub's included — is ever in a position to read i
 search API (`api.github.com`) so the results can be shown. This happens as you type, debounced by
 300 ms. If you have connected a token the request is authenticated, which raises the rate limit and
 includes private repositories you have access to; without one the request is anonymous.
+
+**Pull requests, if a token is saved.** Every five minutes while the browser is open, and when the menu
+opens with a snapshot older than a minute, gitchop asks GitHub's GraphQL API for two things in one
+request: the open pull requests that request your review, and the open pull requests you authored.
+What comes back — titles, numbers, repositories, authors, review states, timestamps — is kept in
+`storage.local` for the menu and the toolbar badge, and is never sent anywhere. Switching the pull
+requests off in Settings stops the requests; removing the token deletes the snapshot.
 
 **Sync, only if you connect it.** Your link list is written to a secret gist on your own account, and
 read back from it. That is the entire payload: the icons, labels and URLs you entered. Firefox asks
@@ -62,6 +71,7 @@ is unlisted, not private — anyone with the URL can read it, so keep the gist i
 | Permission | Why |
 | --- | --- |
 | `storage` | Keeping your links and settings |
+| `alarms` | Refreshing the pull requests every few minutes, so the badge is right before the key is pressed |
 | `https://github.com/*` | Running the menu on GitHub pages |
 | `https://api.github.com/*` | Repository search and listing, and reading and writing your gist |
 
@@ -74,12 +84,14 @@ belong to with no approval from anyone. Leave `gist` off if you do not want the 
 
 Be clear about the trade: classic tokens have **no read-only scope for private repositories**. `repo`
 is the only scope that lists them, and it also grants write to every repository the account can reach.
-gitchop only ever lists them — three calls, no others: who the account is, which repositories it can
-see, and reading and writing the one gist. But the token itself can do more than gitchop does with it,
+gitchop only ever reads with it — four calls, no others: who the account is, which repositories it
+can see, which open pull requests are yours or want your review, and reading and writing the one
+gist. But the token itself can do more than gitchop does with it,
 so put an expiry on it and revoke it if you stop using gitchop.
 
 **Fine-grained tokens** grant less: **Metadata: Read-only** lists private repositories without any
-write, and **Gists: Read and write** covers the backup. The catch is that a fine-grained token has
+write, **Pull requests: Read-only** is what the pull request lanes need, and **Gists: Read and write** covers the
+backup. The catch is that a fine-grained token has
 exactly one resource owner, so each organisation needs its own, and an organisation can require an
 owner to approve them. gitchop accepts any number of tokens, so this works if you can get it.
 

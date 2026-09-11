@@ -9,6 +9,7 @@ window.__gitchop.CSS = `
   --gc-edge: rgba(255, 255, 255, 0.5);
   --gc-text: #e8edf2;
   --gc-dim: #7d8894;
+  --gc-heading: #b3bcc6;
   --gc-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --gc-blade-hi: rgba(255, 255, 255, 0.92);
   --gc-blade-lo: rgba(255, 255, 255, 0.5);
@@ -21,6 +22,7 @@ window.__gitchop.CSS = `
   --gc-spark-halo: rgba(255, 255, 255, 0.7);
   --gc-flare: #fff;
   --gc-halo-size: 6px;
+  --gc-pr-row: 32px;
 }
 
 * {
@@ -122,19 +124,55 @@ window.__gitchop.CSS = `
   filter: blur(14px);
 }
 
-.gc-panel {
-  position: relative;
+/*
+ * The stage is the slab the chop raises: the panel alone, or the panel with the pull requests beside it.
+ * Both columns stretch to the same height, so their bottoms align whatever is in them.
+ */
+.gc-stage {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
   width: min(460px, 100%);
+  opacity: 0;
+}
+
+.gc-stage[data-pulls="true"] {
+  width: min(916px, 100%);
+}
+
+.gc-panel,
+.gc-pulls {
+  position: relative;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--gc-panel);
   border: 1px solid var(--gc-line);
   box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.6);
   color: var(--gc-text);
-  opacity: 0;
 }
 
-.gc-panel::before {
+.gc-panel {
+  flex: 0 1 460px;
+}
+
+.gc-pulls {
+  flex: 0 1 440px;
+}
+
+/* Below this there is no room beside the panel; the menu is exactly what it was. */
+@media (max-width: 979px) {
+  .gc-pulls {
+    display: none;
+  }
+
+  .gc-stage[data-pulls="true"] {
+    width: min(460px, 100%);
+  }
+}
+
+.gc-panel::before,
+.gc-pulls::before {
   content: "";
   position: absolute;
   top: -1px;
@@ -152,26 +190,11 @@ window.__gitchop.CSS = `
   border-bottom: 1px solid var(--gc-line);
 }
 
-.gc-wordmark {
-  font: 600 10.5px/1 var(--gc-mono);
-  letter-spacing: 0.22em;
+.gc-title {
+  font: 600 11px/1 var(--gc-mono);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--gc-dim);
-}
-
-.gc-wordmark b {
-  color: #fff;
-  font-weight: 600;
-}
-
-.gc-context {
-  margin-left: auto;
-  font: 400 11px/1 var(--gc-mono);
-  color: var(--gc-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 60%;
+  color: var(--gc-heading);
 }
 
 .gc-filter {
@@ -241,6 +264,17 @@ window.__gitchop.CSS = `
   cursor: default;
 }
 
+.gc-stage[data-region="pulls"] .gc-panel .gc-item[data-active="true"],
+.gc-stage[data-region="panel"] .gc-pulls .gc-item[data-active="true"] {
+  background: transparent;
+  border-left-color: rgba(255, 255, 255, 0.28);
+}
+
+.gc-stage[data-region="pulls"] .gc-panel .gc-item[data-active="true"] .gc-tail,
+.gc-stage[data-region="panel"] .gc-pulls .gc-item[data-active="true"] .gc-tail {
+  opacity: 0;
+}
+
 .gc-bar {
   height: 9px;
   background: rgba(255, 255, 255, 0.08);
@@ -260,6 +294,10 @@ window.__gitchop.CSS = `
 @media (prefers-reduced-motion: reduce) {
   .gc-bar {
     animation: none;
+  }
+
+  .gc-pop {
+    transition: none;
   }
 }
 
@@ -299,10 +337,10 @@ window.__gitchop.CSS = `
   align-items: center;
   gap: 9px;
   padding: 11px 15px 6px;
-  font: 500 9.5px/1 var(--gc-mono);
-  letter-spacing: 0.16em;
+  font: 600 11px/1 var(--gc-mono);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--gc-dim);
+  color: var(--gc-heading);
 }
 
 .gc-section::after {
@@ -329,9 +367,28 @@ window.__gitchop.CSS = `
 
 .gc-keys {
   margin-left: auto;
-  font: 400 10px/1 var(--gc-mono);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font: 400 10.5px/1 var(--gc-mono);
   color: var(--gc-dim);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
+}
+
+.gc-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.gc-key {
+  font: 600 10px/1 var(--gc-mono);
+  text-transform: uppercase;
+  color: var(--gc-heading);
+  border: 1px solid var(--gc-line);
+  border-bottom-width: 2px;
+  padding: 2px 4px;
 }
 
 .gc-btn {
@@ -397,5 +454,127 @@ window.__gitchop.CSS = `
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+}
+
+/* Pull requests: lanes of two-line rows; skeletons hold the slots until the snapshot lands. */
+.gc-lanes {
+  height: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  outline: none;
+}
+
+.gc-section--lane {
+  padding: 18px 15px 6px;
+}
+
+.gc-section--lane:first-child {
+  padding-top: 11px;
+}
+
+.gc-section--lane::after {
+  content: none;
+}
+
+.gc-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--gc-line);
+}
+
+/*
+ * One line: the title, the repository, and how long since it moved. No tail — the age is the last
+ * thing on the row, and ends where the lane's divider does.
+ */
+.gc-pr {
+  grid-template-columns: 18px minmax(0, 1fr) minmax(0, 36%) auto;
+  min-height: var(--gc-pr-row);
+  padding: 7px 15px 7px 13px;
+}
+
+.gc-pr-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.gc-pr-repo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font: 400 10px/1 var(--gc-mono);
+  color: var(--gc-dim);
+}
+
+.gc-pr-age {
+  min-width: 3ch;
+  text-align: right;
+  font: 400 10px/1 var(--gc-mono);
+  color: var(--gc-dim);
+}
+
+/*
+ * The full title of a row that had to cut it short, under the row it belongs to. It settles into
+ * place — a short fade and a few pixels of travel toward the row — rather than snapping; the
+ * timing is quick enough to read as instant. The script sets left, top and max-width per row.
+ */
+.gc-pop {
+  position: absolute;
+  z-index: 1;
+  padding: 5px 8px;
+  background: #14171b;
+  border: 1px solid var(--gc-line);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.85);
+  color: var(--gc-text);
+  font-size: 11.5px;
+  line-height: 1.4;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(calc(-100% - 4px));
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
+}
+
+.gc-pop[data-below="true"] {
+  transform: translateY(4px);
+}
+
+.gc-pop[data-shown="true"] {
+  opacity: 1;
+  transform: translateY(-100%);
+}
+
+.gc-pop[data-below="true"][data-shown="true"] {
+  transform: none;
+}
+
+.gc-pr--more {
+  min-height: 0;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.gc-pr--more .gc-pr-title {
+  font: 400 11px/1.2 var(--gc-mono);
+  color: var(--gc-dim);
+}
+
+.gc-pr--more .gc-icon {
+  color: var(--gc-dim);
+}
+
+.gc-icon[data-verdict="changes"] {
+  color: #ffb3a8;
+}
+
+.gc-lanes .gc-item--ghost {
+  min-height: var(--gc-pr-row);
+}
+
+.gc-note--pr {
+  min-height: var(--gc-pr-row);
+  display: flex;
+  align-items: center;
 }
 `;

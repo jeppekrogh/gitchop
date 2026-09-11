@@ -113,6 +113,51 @@
         ],
       };
 
+      // The pull requests, as the background would answer them. ?pulls=off hides the column,
+      // ?pulls=empty shows three quiet lanes, ?pulls=fail shows a token that cannot read pull
+      // requests, and ?pulls=cached skips the skeletons and paints a fresh snapshot straight away.
+      const LANES = [
+        { id: 'reviewed', title: 'Feedback on your PRs', empty: 'no feedback on your PRs yet', slots: 3, all: 'https://github.com/pulls' },
+        { id: 'needsReview', title: 'Waiting on you', empty: 'nothing waiting on you', slots: 3, all: 'https://github.com/pulls/review-requested' },
+        { id: 'unreviewed', title: 'Waiting on others', empty: 'nothing waiting on others', slots: 2, all: 'https://github.com/pulls' },
+      ];
+      const pull = (repo, number, title, over = {}) => ({
+        number, title, url: `https://github.com/${repo}/pull/${number}`, repo, repoShort: repo.split('/')[1],
+        private: false, draft: false, author: '', verdict: null, age: '', ...over,
+      });
+      const PULLS = {
+        needsReview: [
+          pull('os2display/display-api-service', 412, 'Fix feed source caching', { private: true, author: 'jekuno', age: '2h' }),
+          pull('itk-dev/economics', 88, 'Quarterly export, with the long title that has to be cut off somewhere sensible', { private: true, author: 'tuj', age: '1d' }),
+          pull('Leantime/leantime', 2201, 'Docker healthcheck', { author: 'marcel', age: '3d' }),
+          pull('os2display/display-client', 640, 'Slide transitions respect reduced motion', { author: 'jekuno', age: '4d' }),
+          pull('itk-dev/economics', 79, 'Import from the bank export', { private: true, author: 'tuj', age: '1w' }),
+        ],
+        reviewed: [
+          pull('itk-dev/gitchop', 17, 'Pull requests beside the menu', { verdict: 'approved', age: '40m' }),
+          pull('itk-dev/economics', 84, 'Invoice numbering', { private: true, verdict: 'changes', age: '5h' }),
+        ],
+        unreviewed: [
+          pull('itk-dev/economics', 91, 'Rounding in VAT lines', { private: true, age: '5h' }),
+        ],
+      };
+      function pullsAnswer(message) {
+        const mode = params.get('pulls') ?? 'on';
+        if (mode === 'off') return { ok: true, show: false };
+        const bare = LANES.map((lane) => ({ ...lane, pulls: null, total: null }));
+        const filled = LANES.map((lane) => {
+          const pulls = mode === 'empty' ? [] : PULLS[lane.id];
+          return { ...lane, pulls, total: pulls.length };
+        });
+        if (message.type === 'gitchop:pulls') {
+          if (mode === 'cached') return { ok: true, show: true, stale: false, fetchedAgo: '2m', error: null, lanes: filled };
+          return { ok: true, show: true, stale: true, fetchedAgo: '', error: null, lanes: bare };
+        }
+        const fail = 'The token cannot read pull requests. A classic token needs repo; a fine-grained one needs Pull requests: read-only.';
+        if (mode === 'fail') return { ok: true, show: true, stale: false, fetchedAgo: '', error: fail, lanes: bare };
+        return { ok: true, show: true, stale: false, fetchedAgo: 'now', error: null, lanes: filled };
+      }
+
       const storageListeners = [];
       window.browser = window.chrome = {
         runtime: {
@@ -126,6 +171,11 @@
                 { duration: 1400, easing: 'ease-out' },
               );
               return { ok: true };
+            }
+            if (message.type === 'gitchop:pulls') return pullsAnswer(message);
+            if (message.type === 'gitchop:pulls:refresh') {
+              await new Promise((done) => setTimeout(done, 900));
+              return pullsAnswer(message);
             }
             if (message.type !== 'gitchop:repos') return { ok: true };
             await new Promise((done) => setTimeout(done, 260));

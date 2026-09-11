@@ -3,6 +3,38 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
+## Unreleased
+
+- **Pull requests beside the menu.** With a token saved, a second column rises next to the panel:
+  **feedback on your PRs** — approved, or changes requested — then the pull requests **waiting on
+  you** for a review, then yours **waiting on others** with no answer yet. Every open pull request you
+  are party to lands in exactly one lane. The search keeps focus; <kbd>→</kbd> on any row that is not a
+  repository — or <kbd>Tab</kbd> on any row at all — crosses into the column, <kbd>↑</kbd><kbd>↓</kbd>
+  walk the lanes, <kbd>↵</kbd> opens, <kbd>←</kbd> comes back, and typing anything drops straight
+  back into the search with the character you typed, so there is nowhere to get stuck. It paints
+  from its last snapshot the instant the menu opens and refreshes behind it — skeletons hold each
+  lane's place until then, and the column's height is the panel's, so the slab never resizes as
+  results land. Every lane shows everything it holds and the column scrolls when it has to; nothing
+  is folded behind a *more* row or sent to a list page on GitHub. One GraphQL request carries both
+  searches: the REST search cannot tell a reviewed
+  pull request from an unreviewed one, and the obvious field for it is null on any repository
+  without required reviews, so the latest review per reviewer is what gets read. Every saved token
+  contributes, since a fine-grained one sees a single owner. Without a token there is no column, not
+  an empty one asking for a token; below about 980 px there is no room and the menu is what it was.
+- The toolbar icon carries the number waiting on you, refreshed every five minutes on an
+  alarm, so you know before you press the key. The red `!` for a missing site grant still wins.
+- A **Pull requests** card in Settings: switches for the column, the badge and whether drafts count,
+  the three counts and when they were fetched, a **Refresh now**, and a plain word about fine-grained
+  tokens — one never granted Pull requests shows the lanes empty rather than refusing, because GitHub
+  returns less, not an error.
+- The strip under the panel now shows keys as keys — <kbd>enter</kbd> open, <kbd>→</kbd> pull
+  requests, <kbd>esc</kbd> close — and says only what is worth saying from wherever the cursor is,
+  the pull requests included, which is why that column has no strip of its own. The panel's head
+  reads *Links* now rather than the wordmark, and the list no longer repeats it; the repository name
+  in the corner is gone too, since the links resolved against it regardless.
+- `alarms` joins the permissions. The privacy notes now say what is asked of GitHub for the lanes and
+  what is kept, and stop claiming the token is used for three calls when it is now four.
+
 ## 2.3.0
 
 - A **Menu delay** slider in Settings sets the beat between the blade leaving the screen and the
