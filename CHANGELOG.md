@@ -3,7 +3,7 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
-## Unreleased
+## 2.4.0
 
 - **Pull requests beside the menu.** With a token saved, a second column rises next to the panel:
   **feedback on your PRs** — approved, or changes requested — then the pull requests **waiting on
