@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "gitchop for GitHub",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Press . anywhere on GitHub for your own links and instant repository search, with your organisations first.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "alarms"],
   "host_permissions": ["https://github.com/*", "https://api.github.com/*"],
   "background": {
     "service_worker": "src/background.js",

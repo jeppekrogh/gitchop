@@ -11,6 +11,7 @@ import {
 } from '../lib/links.js';
 import { load as loadSync, watch as watchSync } from './sync.js';
 import { load as loadIndex } from './repo-index.js';
+import { load as loadPulls } from './pulls-card.js';
 import { load as loadAccess, watch as watchAccess } from './access.js';
 import { load as loadEffects } from './effects-card.js';
 
@@ -193,7 +194,11 @@ renderTokens();
 await loadEffects();
 watchAccess();
 await loadAccess();
-// A token appearing or disappearing changes what the index card can offer.
-watchSync(() => loadIndex());
+// A token appearing or disappearing changes what the index and pull request cards can offer.
+watchSync(() => {
+  loadIndex();
+  loadPulls();
+});
 await loadSync();
 await loadIndex();
+await loadPulls();

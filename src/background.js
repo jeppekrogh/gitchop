@@ -2,9 +2,22 @@ import { DEFAULT_LINKS, api, isSafeUrl, loadLinks, sanitize, saveLinks, withIds 
 import { createStore, identify, readStore, scopesGrantWrite, tokenKind, writeStore } from './lib/gist.js';
 import { findRepos, listAccessibleRepos, matchIndex, ownersFromLinks } from './lib/repos.js';
 import { newVaultKey, seal, unseal } from './lib/vault.js';
+import {
+  LANES,
+  SETTINGS_KEY as PULLS_SETTINGS_KEY,
+  age,
+  fetchLanes,
+  mergeLanes,
+  sanitizeSettings as pullsSettings,
+} from './lib/pulls.js';
 
 const CONFIG_KEY = 'sync';
 const INDEX_KEY = 'index';
+const PULLS_CACHE_KEY = 'pullsCache';
+const PULLS_ALARM = 'gitchop:pulls';
+/** How long a snapshot answers the menu without a request; the alarm keeps it about this fresh. */
+const PULLS_FRESH = 60 * 1000;
+const PULLS_EVERY_MINUTES = 5;
 const PUSH_DELAY = 1500;
 const MAX_LINKS = 200;
 
@@ -239,7 +252,7 @@ async function removeToken({ id }) {
     patch.gistId = null;
     patch.gistTokenId = null;
     patch.dirty = false;
-    await api.storage.local.remove(INDEX_KEY);
+    await api.storage.local.remove([INDEX_KEY, PULLS_CACHE_KEY]);
   } else if (config.gistTokenId === id) {
     patch.gistTokenId = null;
   }
@@ -329,6 +342,134 @@ function indexState(index) {
   };
 }
 
+/**
+ * The pull requests — waiting for your review, yours that were reviewed, yours that were not — are a
+ * snapshot in storage.local that the menu paints from instantly, and a refresh that runs when the
+ * snapshot is older than a minute: on demand when the menu asks, and on an alarm so the toolbar
+ * badge is right before the key is ever pressed. Every token contributes, since a fine-grained one
+ * sees a single owner; the answers are merged by URL.
+ */
+let pullsRefresh = null;
+
+async function readPullsSettings() {
+  try {
+    const stored = await api.storage.sync.get(PULLS_SETTINGS_KEY);
+    return pullsSettings(stored[PULLS_SETTINGS_KEY]);
+  } catch {
+    return pullsSettings();
+  }
+}
+
+async function readPullsCache() {
+  const stored = await api.storage.local.get(PULLS_CACHE_KEY);
+  return stored[PULLS_CACHE_KEY] ?? null;
+}
+
+function pullsAreStale(cache) {
+  if (!cache?.fetchedAt) return true;
+  return Date.now() - new Date(cache.fetchedAt).valueOf() > PULLS_FRESH;
+}
+
+/**
+ * One request in flight at a time, shared by whoever asked. A failure keeps the last good lanes
+ * and records the sentence, so the menu shows what it knows and says the refresh did not land.
+ */
+function refreshPulls() {
+  if (pullsRefresh) return pullsRefresh;
+  pullsRefresh = (async () => {
+    const tokens = await loadTokens();
+    if (tokens.length === 0) return null;
+    const settings = await readPullsSettings();
+    const previous = await readPullsCache();
+
+    const results = [];
+    const failures = [];
+    for (const entry of tokens) {
+      try {
+        results.push(await fetchLanes(entry.secret, settings));
+      } catch (error) {
+        failures.push(String(error.message ?? error));
+      }
+    }
+
+    let next;
+    if (results.length === 0) {
+      next = { ...(previous ?? { lanes: null, fetchedAt: null }), error: failures[0] ?? 'GitHub did not answer.', failedAt: now() };
+    } else {
+      next = {
+        lanes: mergeLanes(results),
+        fetchedAt: now(),
+        drafts: settings.drafts,
+        error: null,
+        failedAt: null,
+        partial: failures.length > 0 ? failures[0] : null,
+      };
+    }
+    await api.storage.local.set({ [PULLS_CACHE_KEY]: next });
+    await paintAction();
+    return next;
+  })().finally(() => {
+    pullsRefresh = null;
+  });
+  return pullsRefresh;
+}
+
+/**
+ * Lanes as the menu draws them, in order, each carrying its own title and slot count — the menu is
+ * a classic content script and cannot import the module that defines them. `pulls` is null until a
+ * snapshot exists, which is the menu's cue to draw skeletons. Ages are worked out here, the one
+ * place that knows the clock.
+ */
+function presentLanes(cache) {
+  const at = Date.now();
+  return LANES.map((lane) => {
+    const part = cache?.lanes?.[lane.id];
+    return {
+      ...lane,
+      total: part ? part.total ?? part.pulls.length : null,
+      pulls: part ? part.pulls.map((pull) => ({ ...pull, age: age(pull.updatedAt, at) })) : null,
+    };
+  });
+}
+
+/**
+ * Everything the menu and the settings card need in one answer. `show` is the whole decision for
+ * the menu: no token or switched off means no column at all, not an empty one asking for a token.
+ */
+async function pullsState() {
+  const [settings, config, cache] = await Promise.all([readPullsSettings(), readConfig(), readPullsCache()]);
+  const hasToken = config.tokens.length > 0;
+  // Drafts switched since the snapshot was taken means the snapshot no longer matches the setting.
+  const stale = pullsAreStale(cache) || (cache?.lanes && cache.drafts !== settings.drafts);
+  return {
+    settings,
+    hasToken,
+    show: hasToken && settings.enabled === 1,
+    stale: Boolean(stale),
+    fetchedAt: cache?.fetchedAt ?? null,
+    fetchedAgo: cache?.fetchedAt ? age(cache.fetchedAt) : '',
+    error: cache?.error ?? null,
+    partial: cache?.partial ?? null,
+    lanes: presentLanes(cache),
+  };
+}
+
+async function schedulePulls() {
+  if (!api.alarms) return;
+  try {
+    const settings = await readPullsSettings();
+    const config = await readConfig();
+    if (settings.enabled === 1 && config.tokens.length > 0) {
+      const existing = await api.alarms.get(PULLS_ALARM);
+      if (!existing) await api.alarms.create(PULLS_ALARM, { periodInMinutes: PULLS_EVERY_MINUTES });
+    } else {
+      await api.alarms.clear(PULLS_ALARM);
+    }
+  } catch {
+    /* no alarm means no badge until the menu asks; the menu still works */
+  }
+}
+
 const HANDLERS = {
   'gitchop:options': async () => {
     await api.runtime.openOptionsPage();
@@ -345,6 +486,20 @@ const HANDLERS = {
     return { results: await findRepos(message.query, first?.secret, owners), owners };
   },
   'gitchop:index:state': async () => indexState(await readIndex()),
+  /** Instant: the snapshot as it stands, and whether it is worth asking for a fresh one. */
+  'gitchop:pulls': () => pullsState(),
+  /** Waits for GitHub. The menu calls it when the instant answer said stale. */
+  'gitchop:pulls:refresh': async () => {
+    await refreshPulls().catch(() => {});
+    return pullsState();
+  },
+  'gitchop:pulls:settings': async (message) => {
+    const settings = pullsSettings({ ...(await readPullsSettings()), ...(message.patch ?? {}) });
+    await api.storage.sync.set({ [PULLS_SETTINGS_KEY]: settings });
+    await schedulePulls();
+    await paintAction();
+    return pullsState();
+  },
   'gitchop:index:build': () => buildIndex(),
   'gitchop:index:clear': async () => {
     await api.storage.local.remove(INDEX_KEY);
@@ -374,10 +529,16 @@ api.runtime.onInstalled.addListener(async ({ reason }) => {
     if (existing.length === 0) await saveLinks(withIds(DEFAULT_LINKS));
   }
   pull().catch(() => {});
+  schedulePulls();
 });
 
 api.runtime.onStartup?.addListener(() => {
   pull().catch(() => {});
+  schedulePulls();
+});
+
+api.alarms?.onAlarm.addListener((alarm) => {
+  if (alarm.name === PULLS_ALARM) refreshPulls().catch(() => {});
 });
 
 api.action.onClicked.addListener(() => {
@@ -385,24 +546,42 @@ api.action.onClicked.addListener(() => {
 });
 
 /**
- * Firefox hands out host permissions on request rather than at install, and Chrome lets them be
- * narrowed to "on click" afterwards. Either way the content script then never runs — the "." key
- * simply does nothing, with nothing to explain it. Badge the toolbar icon so that state is visible
- * instead of silent, and point at the page that fixes it.
+ * The toolbar icon carries one of two things. Firefox hands out host permissions on request rather
+ * than at install, and Chrome lets them be narrowed to "on click" afterwards; either way the content
+ * script then never runs and the "." key simply does nothing, so a missing grant is a red "!" that
+ * points at the page that fixes it, and it wins over everything else. Otherwise, with the badge
+ * switched on, it is the number of pull requests that need your review — before the key is
+ * pressed.
  */
-async function showAccess() {
+async function paintAction() {
   let granted = true;
   try {
     granted = await api.permissions.contains({ origins: ['https://github.com/*'] });
   } catch {
     return;
   }
+
+  let text = '';
+  let title = 'gitchop — settings';
+  let color = '#c0473b';
+  if (!granted) {
+    text = '!';
+    title = 'gitchop — needs access to github.com; click to fix';
+  } else {
+    const [settings, cache] = await Promise.all([readPullsSettings(), readPullsCache().catch(() => null)]);
+    const waiting = cache?.lanes?.needsReview?.total ?? 0;
+    if (settings.badge === 1 && settings.enabled === 1 && waiting > 0) {
+      text = waiting > 99 ? '99+' : String(waiting);
+      title = `gitchop — ${waiting} waiting on you`;
+      color = '#3b4249';
+    }
+  }
+
   try {
-    await api.action.setBadgeText({ text: granted ? '' : '!' });
-    await api.action.setBadgeBackgroundColor?.({ color: '#c0473b' });
-    await api.action.setTitle({
-      title: granted ? 'gitchop — settings' : 'gitchop — needs access to github.com; click to fix',
-    });
+    await api.action.setBadgeText({ text });
+    await api.action.setBadgeBackgroundColor?.({ color });
+    await api.action.setBadgeTextColor?.({ color: '#ffffff' });
+    await api.action.setTitle({ title });
   } catch {
     /* older browsers may not offer badges on the action */
   }
@@ -415,12 +594,21 @@ async function showAccess() {
   }
 })().catch(() => {});
 
-api.permissions.onAdded?.addListener(() => showAccess());
-api.permissions.onRemoved?.addListener(() => showAccess());
-api.runtime.onStartup?.addListener(() => showAccess());
-showAccess();
+api.permissions.onAdded?.addListener(() => paintAction());
+api.permissions.onRemoved?.addListener(() => paintAction());
+api.runtime.onStartup?.addListener(() => paintAction());
+paintAction();
 
 api.storage.onChanged.addListener((changes, area) => {
+  // The pull request switches live in sync storage so they travel with the profile; a token arriving or
+  // leaving is a local change. Either way the alarm and the badge follow.
+  const tokensChanged =
+    area === 'local' &&
+    changes[CONFIG_KEY] &&
+    (changes[CONFIG_KEY].oldValue?.tokens?.length ?? 0) !== (changes[CONFIG_KEY].newValue?.tokens?.length ?? 0);
+  if ((area === 'sync' && changes[PULLS_SETTINGS_KEY]) || tokensChanged) {
+    schedulePulls().then(() => paintAction()).catch(() => {});
+  }
   if (area !== 'sync' || !changes.links) return;
   if (JSON.stringify(changes.links.newValue ?? []) === inStep) return;
 

@@ -86,13 +86,16 @@ window.__gitchop = window.__gitchop || {};
     stage.chop();
     window.addEventListener('resize', onResize);
 
-    const links = await readLinks();
+    // The pull requests answer from their snapshot, so this is storage reads only; no request holds
+    // the menu up, and a background that cannot answer simply means no column this time.
+    const [links, pulls] = await Promise.all([readLinks(), ask({ type: 'gitchop:pulls' })]);
     if (state.stage !== stage) return;
 
     const ctx = gc.readContext();
     const menu = gc.createMenu({
       ctx,
       links,
+      pulls: pulls?.ok ? pulls : null,
       onClose: closeChop,
       onOptions: () => {
         ask({ type: 'gitchop:options' });
@@ -102,8 +105,9 @@ window.__gitchop = window.__gitchop || {};
     state.menu = menu;
 
     stage.menuLayer.append(menu.element);
+    // The gutter between the columns is the stage itself, and clicking it is clicking outside.
     stage.menuLayer.addEventListener('mousedown', (event) => {
-      if (event.target === stage.menuLayer) closeChop();
+      if (event.target === stage.menuLayer || event.target === menu.element) closeChop();
     });
 
     stage.revealPanel(menu.element);
