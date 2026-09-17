@@ -55,6 +55,9 @@ it from.
   at all, only by keyboard. It listens on the menu layer now, where the real target is visible,
   and a wheel over a list with room left in that direction is let through; everything else — dead
   space, a list at its end — is still stopped, so nothing chains to the page.
+- One mark on every waiting pull request. The filled and hollow diamonds meant private and public,
+  as they do in the repository search — but that is a question about which repository is yours,
+  and every row in the column already is. The verdict glyphs on the feedback lane stay.
 - The strip under the panel is painted once more the moment the menu is in the page, so a fresh
   snapshot with nothing to refresh no longer leaves it silent about the columns until the cursor
   moves — that was true of the pull requests before this. In Settings, the token list shared a
