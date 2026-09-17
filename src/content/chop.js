@@ -115,9 +115,32 @@ window.__gitchop = window.__gitchop || {};
     shadow.append(style, scrim, wipe, ...edges, bloom, cut, flare, sparks, menuLayer);
     document.documentElement.append(host);
 
-    const blockScroll = (event) => event.preventDefault();
-    host.addEventListener('wheel', blockScroll, { passive: false });
-    host.addEventListener('touchmove', blockScroll, { passive: false });
+    /**
+     * The page behind must not scroll while the overlay is up, but the lists inside it must — the
+     * news popover's list included. A wheel turned over one that has somewhere to go in that
+     * direction is left alone; every other wheel — dead space, a list already at its end — is
+     * stopped here, so nothing ever chains through to the page. The listener sits on the menu
+     * layer, the topmost sheet, for two reasons: at the host the target has already been
+     * retargeted to <gitchop-root>, so a list cannot be told from dead space; and the shadow root
+     * itself has no box, so the compositor sees no blocking handler over the page and scrolls it
+     * without asking.
+     */
+    const SCROLLERS = '.gc-list, .gc-pop-card';
+    const listCanScroll = (list, event) => {
+      const room = list.scrollHeight - list.clientHeight;
+      if (room <= 0) return false;
+      if (event.type !== 'wheel') return true;
+      if (event.deltaY < 0) return list.scrollTop > 0;
+      if (event.deltaY > 0) return list.scrollTop < room - 0.5;
+      return false;
+    };
+    const blockScroll = (event) => {
+      const list = event.target?.closest?.(SCROLLERS);
+      if (list && listCanScroll(list, event)) return;
+      event.preventDefault();
+    };
+    menuLayer.addEventListener('wheel', blockScroll, { passive: false });
+    menuLayer.addEventListener('touchmove', blockScroll, { passive: false });
 
     /**
      * Keyboard events are composed, so they escape the shadow root and reach GitHub's own
@@ -335,8 +358,8 @@ window.__gitchop = window.__gitchop || {};
       },
 
       destroy() {
-        host.removeEventListener('wheel', blockScroll);
-        host.removeEventListener('touchmove', blockScroll);
+        menuLayer.removeEventListener('wheel', blockScroll);
+        menuLayer.removeEventListener('touchmove', blockScroll);
         for (const type of ['keydown', 'keypress', 'keyup']) {
           host.removeEventListener(type, keepKeys);
         }

@@ -3,6 +3,67 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
+## Unreleased
+
+- **News from the repositories you follow.** Subscribe to a repository and a third column rises on
+  the left of the menu with what happened in it, told in a few sentences — *Released v3.1.0.
+  23 commits to develop by tuj, jekuno and 2 more. 2 pull requests merged, 1 opened and 1 closed
+  without merging. 2 issues opened and 1 closed.* — most newsworthy first, and one quiet line when
+  nothing did. Every fact in the prose is a chip: hover it, and what it is made of unfolds
+  beneath the sentence — the pull requests behind the count, every
+  commit of the day with its message and who made it, the releases by name — each line a link.
+  Nothing is cut: the list scrolls inside the popover past about twenty lines, and it stays while
+  the mouse is over the chip or the popover itself — the gap between them belongs to the popover,
+  since the next line's chips begin in it — so a busy day can be read and scrolled without leaving
+  the page. Only a fetch that stopped before the day did — a
+  fourth hundred commits, a fifty-first pull request — ends the list with a line pointing at
+  GitHub. Clicking the chip itself opens GitHub's own list of exactly that, cut to the window. It
+  is a morning paper, not a feed: the edition is made up
+  once a day at the hour set in Settings (08:00 to begin with), covers everything since the previous
+  edition — yesterday at the same hour, or back to Friday's on a Monday when the browser was shut
+  over the weekend, up to a week — and is left alone until the next, so the header can say in one
+  line what the whole column covers. Only this morning's edition is ever shown: yesterday's, still
+  on file, is skeletons and a refresh rather than a stale page under a header that says otherwise.
+- Subscribing is a row inside a repository: <kbd>→</kbd> on any repository row now offers
+  **Subscribe to news** under *Pull requests* and *Issues*, and the same row unsubscribes. On a
+  repository's own page the command sits under *Do*, since the links that point inside a repository
+  have no row for the repository itself. The first subscription raises the column at once and the
+  last lets it go, with the menu still open. The list travels with the profile in sync storage,
+  capped at thirty.
+- The column is read with the mouse and never takes the keyboard. Walking the chips inside the
+  sentences with the arrows was tried and dropped: prose is not a list of rows to be a cursor in.
+  So <kbd>Tab</kbd>, <kbd>←</kbd> and <kbd>→</kbd> stay with the links and the pull requests
+  exactly as before, and the strip under the panel does not mention the news. Three columns need
+  about 1280 px, where all three squeeze a little; below that the news steps out first, being the
+  newer arrival, and below 980 px the menu is what it was.
+- Each repository costs five plain REST requests a day — the repository itself, the commits on its
+  default branch inside the window (a page more for every hundred beyond the first, up to three),
+  the pull requests and issues that moved lately, the recent releases — so public repositories
+  need no token at all. A private one is fetched with whichever
+  saved token can see it, tried in the order that worked last time, anonymous last; a repository
+  that fails keeps what it had, says why, and is asked again after a quarter of an hour rather than
+  on every open. Everything is filtered against the window here, since only the commits endpoint
+  takes an `until`.
+- A **News** card in Settings: the switch, the edition hour as a slider shown as a clock, every
+  subscribed repository with what the edition made of it — so many items, quiet, or the sentence
+  GitHub gave — an **Unsubscribe** each, a field to add one by name or pasted URL, and a **Refresh
+  now** that asks again without moving the window. It follows a subscription made in the menu
+  without a reload.
+- The lists scroll with the mouse. The overlay stops the wheel so the page behind cannot move, and
+  it stopped it on the host — where every wheel inside the overlay had already been retargeted to
+  the same element, so the links list, the pull requests and now the news never scrolled by wheel
+  at all, only by keyboard. It listens on the menu layer now, where the real target is visible,
+  and a wheel over a list with room left in that direction is let through; everything else — dead
+  space, a list at its end — is still stopped, so nothing chains to the page.
+- The strip under the panel is painted once more the moment the menu is in the page, so a fresh
+  snapshot with nothing to refresh no longer leaves it silent about the columns until the cursor
+  moves — that was true of the pull requests before this. In Settings, the token list shared a
+  class with the placeholder table and inherited its two columns, so two tokens sat side by side;
+  the list of subscribed repositories would have too.
+- The release workflow now runs every test, not the two it had when there were two; the privacy
+  notes say what the news asks GitHub for and what is kept, and the token card counts five calls
+  rather than four.
+
 ## 2.4.0
 
 - **Pull requests beside the menu.** With a token saved, a second column rises next to the panel:

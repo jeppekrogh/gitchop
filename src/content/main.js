@@ -86,9 +86,9 @@ window.__gitchop = window.__gitchop || {};
     stage.chop();
     window.addEventListener('resize', onResize);
 
-    // The pull requests answer from their snapshot, so this is storage reads only; no request holds
-    // the menu up, and a background that cannot answer simply means no column this time.
-    const [links, pulls] = await Promise.all([readLinks(), ask({ type: 'gitchop:pulls' })]);
+    // The pull requests and the news answer from their snapshots, so this is storage reads only; no
+    // request holds the menu up, and a background that cannot answer simply means no column this time.
+    const [links, pulls, news] = await Promise.all([readLinks(), ask({ type: 'gitchop:pulls' }), ask({ type: 'gitchop:news' })]);
     if (state.stage !== stage) return;
 
     const ctx = gc.readContext();
@@ -96,6 +96,7 @@ window.__gitchop = window.__gitchop || {};
       ctx,
       links,
       pulls: pulls?.ok ? pulls : null,
+      news: news?.ok ? news : null,
       onClose: closeChop,
       onOptions: () => {
         ask({ type: 'gitchop:options' });

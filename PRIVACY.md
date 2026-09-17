@@ -13,6 +13,8 @@ of any kind beyond GitHub itself.
 | Your GitHub token, if you add one | `storage.local` | Only to `api.github.com`, as an authorization header |
 | A list of repositories you can access | `storage.local` | No — never sent anywhere |
 | Your open pull requests — title, number, repository, author, review state | `storage.local` | No — never sent anywhere |
+| The repositories you subscribe to for news, as `owner/name` | `storage.sync` | No — it travels with the profile, as the links do |
+| The day's news for them — commit counts and authors, the first line of the latest commit message, pull request, issue and release titles | `storage.local` | No — never sent anywhere |
 | Which gist to use, and when it last synced | `storage.local` | No |
 
 The repository list holds names, URLs, descriptions and the private and archived flags — the same
@@ -21,9 +23,11 @@ found by typing, which GitHub's search will not do, and so that matching costs n
 written on this machine and read on this machine. **Clear** in the settings page deletes it, and
 removing the token deletes it too.
 
-gitchop never reads repository contents, code, commits or issues. Beyond the repository list it asks
-GitHub for one more thing, the open pull requests you are party to, for the column beside the menu — see below. It
-reads their titles and state, never their diffs or comments.
+gitchop never reads repository contents or code. Beyond the repository list it asks GitHub for two
+more things: the open pull requests you are party to, for the column beside the menu, and — only for
+repositories you have subscribed to — what happened in them lately, for the news column. Both are
+titles and states: the first line of a commit message, the title of a pull request, an issue or a
+release, who and when. Never a diff, a file, or a comment.
 
 The token is kept in `storage.local` rather than `storage.sync` specifically so that it is never
 handed to Mozilla's sync servers. Every request to GitHub is made from the extension's background
@@ -42,6 +46,17 @@ request: the open pull requests that request your review, and the open pull requ
 What comes back — titles, numbers, repositories, authors, review states, timestamps — is kept in
 `storage.local` for the menu and the toolbar badge, and is never sent anywhere. Switching the pull
 requests off in Settings stops the requests; removing the token deletes the snapshot.
+
+**News, only for repositories you subscribe to.** Once a day at the edition hour set in Settings,
+when the browser starts with that day's edition not yet made up, and when the menu opens the same
+way, gitchop asks GitHub's REST API five things per subscribed repository: the repository itself,
+the commits on its default branch inside the window, the pull requests and issues that changed
+lately, and its recent releases. A public repository is asked about anonymously when no saved token
+can see it; a private one is asked about with the token that can. What comes back is cut down to
+counts, names, titles and timestamps, kept in `storage.local` for the menu, and never sent anywhere.
+Unsubscribing drops the repository from the next edition; switching the news off in Settings stops
+the requests; removing the last token deletes the edition, so what a token saw of a private
+repository does not outlive it.
 
 **Sync, only if you connect it.** Your link list is written to a secret gist on your own account, and
 read back from it. That is the entire payload: the icons, labels and URLs you entered. Firefox asks
@@ -71,9 +86,9 @@ is unlisted, not private — anyone with the URL can read it, so keep the gist i
 | Permission | Why |
 | --- | --- |
 | `storage` | Keeping your links and settings |
-| `alarms` | Refreshing the pull requests every few minutes, so the badge is right before the key is pressed |
+| `alarms` | Refreshing the pull requests every few minutes, so the badge is right before the key is pressed, and making up the news edition once a day |
 | `https://github.com/*` | Running the menu on GitHub pages |
-| `https://api.github.com/*` | Repository search and listing, and reading and writing your gist |
+| `https://api.github.com/*` | Repository search and listing, the pull requests, the news, and reading and writing your gist |
 
 There is no `tabs` permission, no `<all_urls>`, and no host beyond those two.
 
@@ -84,14 +99,16 @@ belong to with no approval from anyone. Leave `gist` off if you do not want the 
 
 Be clear about the trade: classic tokens have **no read-only scope for private repositories**. `repo`
 is the only scope that lists them, and it also grants write to every repository the account can reach.
-gitchop only ever reads with it — four calls, no others: who the account is, which repositories it
-can see, which open pull requests are yours or want your review, and reading and writing the one
-gist. But the token itself can do more than gitchop does with it,
-so put an expiry on it and revoke it if you stop using gitchop.
+gitchop only ever reads with it — five calls, no others: who the account is, which repositories it
+can see, which open pull requests are yours or want your review, what happened lately in the
+repositories you subscribe to, and reading and writing the one gist. But the token itself can do
+more than gitchop does with it, so put an expiry on it and revoke it if you stop using gitchop.
 
 **Fine-grained tokens** grant less: **Metadata: Read-only** lists private repositories without any
-write, **Pull requests: Read-only** is what the pull request lanes need, and **Gists: Read and write** covers the
-backup. The catch is that a fine-grained token has
+write, **Pull requests: Read-only** is what the pull request lanes need, **Contents**, **Pull
+requests** and **Issues: Read-only** together are what the news needs for a private repository
+(public ones need nothing), and **Gists: Read and write** covers the backup. The catch is that a
+fine-grained token has
 exactly one resource owner, so each organisation needs its own, and an organisation can require an
 owner to approve them. gitchop accepts any number of tokens, so this works if you can get it.
 
