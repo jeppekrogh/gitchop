@@ -143,6 +143,7 @@ node dev/context.test.mjs && node dev/repos.test.mjs && node dev/effects.test.mj
 node dev/build.mjs all                                 # dist/gitchop-<version>-<browser>.<ext>
 node dev/build.mjs chrome --no-zip                     # unpacked, for chrome://extensions
 open dev/harness.html                                  # the menu and effect sliders, without installing
+node dev/serve.mjs                                     # the same over http, where Settings opens the real settings page
 ```
 
 The build refuses to package a manifest whose files do not resolve, imports included — with no
