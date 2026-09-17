@@ -125,8 +125,10 @@ window.__gitchop.CSS = `
 }
 
 /*
- * The stage is the slab the chop raises: the panel alone, or the panel with the pull requests beside it.
- * Both columns stretch to the same height, so their bottoms align whatever is in them.
+ * The stage is the slab the chop raises: the panel alone, or the panel with the news on its left
+ * and the pull requests on its right. Every column stretches to the same height, so their bottoms
+ * align whatever is in them. The widths are what the columns want; a viewport just short of them
+ * squeezes all three a little before one has to go.
  */
 .gc-stage {
   display: flex;
@@ -140,8 +142,17 @@ window.__gitchop.CSS = `
   width: min(916px, 100%);
 }
 
+.gc-stage[data-news="true"] {
+  width: min(876px, 100%);
+}
+
+.gc-stage[data-news="true"][data-pulls="true"] {
+  width: min(1332px, 100%);
+}
+
 .gc-panel,
-.gc-pulls {
+.gc-pulls,
+.gc-news {
   position: relative;
   min-width: 0;
   display: flex;
@@ -160,19 +171,44 @@ window.__gitchop.CSS = `
   flex: 0 1 440px;
 }
 
-/* Below this there is no room beside the panel; the menu is exactly what it was. */
-@media (max-width: 979px) {
-  .gc-pulls {
+/* In the tree whenever the news is on; in the layout only while something is subscribed. */
+.gc-news {
+  flex: 0 1 400px;
+  display: none;
+}
+
+.gc-stage[data-news="true"] .gc-news {
+  display: flex;
+}
+
+/* Three columns need this much; below it the news steps out first, being the newer arrival. */
+@media (max-width: 1279px) {
+  .gc-stage[data-pulls="true"] .gc-news {
     display: none;
   }
 
-  .gc-stage[data-pulls="true"] {
+  .gc-stage[data-news="true"][data-pulls="true"] {
+    width: min(916px, 100%);
+  }
+}
+
+/* Below this there is no room beside the panel at all; the menu is exactly what it was. */
+@media (max-width: 979px) {
+  .gc-pulls,
+  .gc-stage[data-news="true"] .gc-news {
+    display: none;
+  }
+
+  .gc-stage[data-pulls="true"],
+  .gc-stage[data-news="true"],
+  .gc-stage[data-news="true"][data-pulls="true"] {
     width: min(460px, 100%);
   }
 }
 
 .gc-panel::before,
-.gc-pulls::before {
+.gc-pulls::before,
+.gc-news::before {
   content: "";
   position: absolute;
   top: -1px;
@@ -264,14 +300,15 @@ window.__gitchop.CSS = `
   cursor: default;
 }
 
-.gc-stage[data-region="pulls"] .gc-panel .gc-item[data-active="true"],
-.gc-stage[data-region="panel"] .gc-pulls .gc-item[data-active="true"] {
+/* A column without the cursor keeps its place marked, but quietly. */
+.gc-stage:not([data-region="panel"]) .gc-panel .gc-item[data-active="true"],
+.gc-stage:not([data-region="pulls"]) .gc-pulls .gc-item[data-active="true"],
+.gc-stage:not([data-region="news"]) .gc-news .gc-item[data-active="true"] {
   background: transparent;
   border-left-color: rgba(255, 255, 255, 0.28);
 }
 
-.gc-stage[data-region="pulls"] .gc-panel .gc-item[data-active="true"] .gc-tail,
-.gc-stage[data-region="panel"] .gc-pulls .gc-item[data-active="true"] .gc-tail {
+.gc-stage:not([data-region="panel"]) .gc-panel .gc-item[data-active="true"] .gc-tail {
   opacity: 0;
 }
 
@@ -576,5 +613,55 @@ window.__gitchop.CSS = `
   min-height: var(--gc-pr-row);
   display: flex;
   align-items: center;
+}
+
+.gc-note[data-error="true"] {
+  color: #ffb3a8;
+}
+
+/*
+ * News: one section per repository, rows of a glyph, a title and a tail word. The header carries
+ * the one fact the whole column shares — what it covers — where the panel's head has its title.
+ */
+.gc-since {
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 400 10px/1 var(--gc-mono);
+  letter-spacing: 0.03em;
+  color: var(--gc-dim);
+}
+
+.gc-section--repo > span:first-child {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The tail takes what it needs up to a share of the row, and the title has the rest. */
+.gc-news-row {
+  grid-template-columns: 18px minmax(0, 1fr) fit-content(40%);
+}
+
+.gc-news-row .gc-icon {
+  color: var(--gc-dim);
+}
+
+.gc-news-row .gc-icon[data-kind="release"] {
+  color: var(--gc-text);
+}
+
+.gc-news-tail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font: 400 10px/1 var(--gc-mono);
+  color: var(--gc-dim);
 }
 `;

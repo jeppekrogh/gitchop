@@ -41,8 +41,12 @@ window.__gitchop = window.__gitchop || {};
   /** The one row in a lane that is not a pull request: the tail for whatever GitHub holds beyond what was fetched. */
   const MORE_ROW = 'more';
 
+  /** What each kind of news looks like at the start of its row; the tail word says the rest. */
+  const NEWS_GLYPHS = { release: '▲', commits: '⇡', pull: '⇄', issue: '◦', more: '…' };
+  /** Skeleton rows standing in for a repository the edition has not reached yet. */
+  const NEWS_SLOTS = 2;
 
-  gc.createMenu = function createMenu({ ctx, links, pulls, onClose, onOptions, onLinksChanged }) {
+  gc.createMenu = function createMenu({ ctx, links, pulls, news, onClose, onOptions, onLinksChanged }) {
     const panel = node('div', 'gc-panel');
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
@@ -68,14 +72,36 @@ window.__gitchop = window.__gitchop || {};
     panel.append(head, filter, list, foot);
 
     /**
-     * The panel and the pull requests beside it rise into the cut as one slab, so the stage is what
-     * the chop animates. The column only exists when the background said so — a token that can read
-     * pull requests, and the switch on. Without it the stage is the panel alone, exactly as before.
+     * The panel and the columns beside it rise into the cut as one slab, so the stage is what the
+     * chop animates: the news on the left, the pull requests on the right. Each column only exists
+     * when the background said so — a token that can read pull requests and the switch on; the
+     * news switch on. Without them the stage is the panel alone, exactly as before.
      */
     const stage = node('div', 'gc-stage');
     stage.dataset.region = 'panel';
     stage.dataset.pulls = String(Boolean(pulls?.show));
+    stage.dataset.news = String(Boolean(news?.show) && (news?.repos?.length ?? 0) > 0);
     stage.append(panel);
+
+    // The news column is in the tree whenever the feature is on, and in the layout only while
+    // something is subscribed — so the first subscription made from the menu raises it at once,
+    // and the last unsubscription lets it go, without the menu being reopened.
+    let newsEl = null;
+    let newsList = null;
+    let newsSince = null;
+    if (news?.show) {
+      newsEl = node('aside', 'gc-news');
+      newsEl.setAttribute('aria-label', 'News from the repositories you follow');
+      const newsHead = node('div', 'gc-head');
+      newsSince = node('span', 'gc-since');
+      newsHead.append(node('span', 'gc-title', 'News'), newsSince);
+      newsList = node('ul', 'gc-list gc-lanes');
+      newsList.setAttribute('role', 'listbox');
+      newsList.setAttribute('aria-label', 'News');
+      newsList.tabIndex = -1;
+      newsEl.append(newsHead, newsList);
+      stage.insertBefore(newsEl, panel);
+    }
 
     let pullsEl = null;
     let pullsList = null;
@@ -92,14 +118,15 @@ window.__gitchop = window.__gitchop || {};
       stage.append(pullsEl);
     }
 
-    // The full title of a pull request whose row had to cut it short, shown the instant the row is
-    // hovered or becomes the cursor. One element for the whole column, moved to whichever row.
-    // Shown and hidden by an attribute rather than `hidden`, so it can fade and rise into place.
+    // The full title of a row that had to cut it short, shown the instant the row is hovered or
+    // becomes the cursor. One element for both side columns, moved to whichever row — and into
+    // whichever column, since it is placed against that column's box. Shown and hidden by an
+    // attribute rather than `hidden`, so it can fade and rise into place.
     const pop = node('div', 'gc-pop');
     pop.dataset.shown = 'false';
     pop.setAttribute('role', 'tooltip');
     pop.setAttribute('aria-hidden', 'true');
-    pullsEl?.append(pop);
+    (pullsEl ?? newsEl)?.append(pop);
     let popHover = null;
 
     function hidePop() {
@@ -107,13 +134,14 @@ window.__gitchop = window.__gitchop || {};
       pop.setAttribute('aria-hidden', 'true');
     }
 
-    function popFor(item) {
+    function popFor(item, column) {
       const title = item?.querySelector('.gc-pr-title');
-      if (!title || title.scrollWidth <= title.clientWidth) {
+      if (!title || !column || title.scrollWidth <= title.clientWidth) {
         hidePop();
         return;
       }
-      const box = pullsEl.getBoundingClientRect();
+      if (pop.parentNode !== column) column.append(pop);
+      const box = column.getBoundingClientRect();
       const row = item.getBoundingClientRect();
       const at = title.getBoundingClientRect();
       // Under the row, starting where the title starts and never past the column's edge. Only when
@@ -129,14 +157,16 @@ window.__gitchop = window.__gitchop || {};
       pop.setAttribute('aria-hidden', 'false');
     }
 
-    /** Whatever the mouse is over wins; otherwise the cursor, if it is in this column. */
+    /** Whatever the mouse is over wins; otherwise the cursor, if it is in a side column. */
     function placePop() {
-      if (!pullsEl) return;
-      if (popHover) popFor(popHover);
-      else if (region === 'pulls') popFor(pullsItems[pullsIndex]?.item);
+      if (!pullsEl && !newsEl) return;
+      if (popHover) popFor(popHover.item, popHover.column);
+      else if (region === 'pulls') popFor(pullsItems[pullsIndex]?.item, pullsEl);
+      else if (region === 'news') popFor(newsItems[newsIndex]?.item, newsEl);
       else hidePop();
     }
     pullsList?.addEventListener('scroll', hidePop, { passive: true });
+    newsList?.addEventListener('scroll', hidePop, { passive: true });
 
     let current = links.slice();
     let items = [];
@@ -158,12 +188,47 @@ window.__gitchop = window.__gitchop || {};
     let pullsItems = [];
     let pullsIndex = 0;
     let pullsRun = 0;
+    let newsData = news ?? null;
+    let newsItems = [];
+    let newsIndex = 0;
+    let newsRun = 0;
+    let newsBusy = false;
 
-    /** Commands live in the list rather than as buttons, so they are reachable by typing. */
+    function subscribed(repo) {
+      return (newsData?.settings?.repos ?? []).some((seen) => seen.toLowerCase() === String(repo).toLowerCase());
+    }
+
+    /** The subscribe row for one repository — inside it, or as a command when standing on its page. */
+    function subscribeEntry(repo, label) {
+      const on = subscribed(repo);
+      return {
+        usable: true,
+        url: '',
+        icon: on ? '◉' : '◎',
+        label: on ? `Unsubscribe${label ? ` ${label}` : ''} from news` : `Subscribe to news${label ? ` for ${label}` : ''}`,
+        keywords: 'subscribe follow news unsubscribe unfollow digest',
+        reason: '',
+        tip: '',
+        repo: null,
+        run: () => toggleNews(repo, !on),
+      };
+    }
+
+    /**
+     * Commands live in the list rather than as buttons, so they are reachable by typing. The
+     * repository you are standing on rarely has a row of its own — the default links point inside
+     * it, not at it — so subscribing to it is a command here rather than a level down.
+     */
     const ACTIONS = [
       { icon: '＋', label: 'Add this page', keywords: 'add save bookmark current page', run: () => openForm() },
       { icon: '⚙', label: 'Settings', keywords: 'settings manage options edit reorder remove delete sync', run: () => onOptions?.() },
     ];
+
+    function actions() {
+      const list = ACTIONS.slice();
+      if (newsData?.show && ctx.repoFull) list.splice(1, 0, subscribeEntry(ctx.repoFull, ctx.repoFull));
+      return list;
+    }
 
     function linkEntries(query) {
       const needle = query.toLowerCase();
@@ -186,8 +251,9 @@ window.__gitchop = window.__gitchop || {};
 
     function actionEntries(query) {
       const needle = query.toLowerCase();
-      return ACTIONS.filter((action) => !needle || `${action.label} ${action.keywords}`.toLowerCase().includes(needle)).map(
-        (action) => ({
+      return actions()
+        .filter((action) => !needle || `${action.label} ${action.keywords}`.toLowerCase().includes(needle))
+        .map((action) => ({
           usable: true,
           url: '',
           icon: action.icon,
@@ -196,8 +262,7 @@ window.__gitchop = window.__gitchop || {};
           tip: '',
           repo: null,
           run: action.run,
-        }),
-      );
+        }));
     }
 
     function repoEntry(repo) {
@@ -213,8 +278,9 @@ window.__gitchop = window.__gitchop || {};
       };
     }
 
+    /** The places inside a repository, and — with the news on — whether its days land in the column. */
     function drillEntries() {
-      return IN_REPO.map(([icon, label, path]) => ({
+      const entries = IN_REPO.map(([icon, label, path]) => ({
         usable: true,
         url: new URL(`${encodeURIComponent(drill.repo).replace(/%2F/g, '/')}/${path}`, 'https://github.com/').href,
         icon,
@@ -223,6 +289,8 @@ window.__gitchop = window.__gitchop || {};
         tip: '',
         repo: null,
       }));
+      if (newsData?.show) entries.push(subscribeEntry(drill.repo, ''));
+      return entries;
     }
 
     function cancelSearch() {
@@ -266,9 +334,22 @@ window.__gitchop = window.__gitchop || {};
       window.location.assign(entry.url);
     }
 
-    /** The column is in the layout only while the viewport has room for it; the CSS decides. */
+    /** A column is in the layout only while the viewport has room for it; the CSS decides. */
     function pullsVisible() {
       return Boolean(pullsEl) && pullsEl.getClientRects().length > 0;
+    }
+
+    function newsVisible() {
+      return Boolean(newsEl) && newsEl.getClientRects().length > 0;
+    }
+
+    /** The columns the cursor can be in, left to right: only a side column with rows in it counts. */
+    function regions() {
+      const order = [];
+      if (newsVisible() && newsItems.length > 0) order.push('news');
+      order.push('panel');
+      if (pullsVisible() && pullsItems.length > 0) order.push('pulls');
+      return order;
     }
 
     /**
@@ -296,13 +377,26 @@ window.__gitchop = window.__gitchop || {};
         item.dataset.active = String(index === pullsIndex);
       });
       if (region === 'pulls') pullsItems[pullsIndex]?.item.scrollIntoView({ block: 'nearest' });
+
+      newsItems.forEach(({ item }, index) => {
+        item.dataset.active = String(index === newsIndex);
+      });
+      if (region === 'news') newsItems[newsIndex]?.item.scrollIntoView({ block: 'nearest' });
       placePop();
 
-      const across = pullsVisible() && pullsItems.length > 0;
+      const order = regions();
+      const across = order.includes('pulls');
+      const left = order.includes('news');
+      // With a column on either side the strip is full; esc is the one key nobody needs telling.
+      const close = left && across ? [] : [['esc', 'close']];
       if (region === 'pulls') hint(['enter', 'open'], ['←', 'back'], [null, 'type to search']);
+      else if (region === 'news') hint(['enter', 'open'], ['→', 'back'], [null, 'type to search']);
       else if (drill) hint(['enter', 'open'], ['←', 'back']);
-      else if (items[activeIndex]?.entry.repo) hint(['enter', 'open'], ['→', 'inside'], ...(across ? [['tab', 'pull requests']] : []));
-      else hint(['enter', 'open'], ...(across ? [['→', 'pull requests']] : []), ['esc', 'close']);
+      else if (items[activeIndex]?.entry.repo) {
+        hint(['enter', 'open'], ['→', 'inside'], ...(left ? [['←', 'news']] : []), ...(across ? [['tab', 'pull requests']] : []));
+      } else {
+        hint(['enter', 'open'], ...(left ? [['←', 'news']] : []), ...(across ? [['→', 'pull requests']] : []), ...close);
+      }
     }
 
     function section(title) {
@@ -482,7 +576,7 @@ window.__gitchop = window.__gitchop || {};
       };
       item.addEventListener('mousemove', activate);
       item.addEventListener('mouseenter', () => {
-        popHover = item;
+        popHover = { item, column: pullsEl };
         placePop();
       });
       item.addEventListener('mouseleave', () => {
@@ -498,6 +592,154 @@ window.__gitchop = window.__gitchop || {};
       pullsItems.push({ entry, item });
       row.append(item);
       return row;
+    }
+
+    /**
+     * What one piece of news says about itself: a glyph for its kind, the title, and one word for
+     * what became of it — merged, opened, closed, release — or, on the commits line, who. The
+     * latest commit message rides along as the tooltip, since the line itself is only a count.
+     */
+    function newsEntry(row) {
+      return {
+        usable: gc.isSafeUrl(row.url),
+        url: row.url,
+        icon: NEWS_GLYPHS[row.kind] ?? '·',
+        kind: row.kind,
+        title: row.title || '',
+        tail: row.tail || '',
+        tip: row.tip || '',
+      };
+    }
+
+    function newsRow(entry) {
+      const row = node('li');
+      row.setAttribute('role', 'option');
+
+      const interactive = entry.usable && gc.isSafeUrl(entry.url);
+      const item = node(interactive ? 'a' : 'div', `gc-item gc-pr gc-news-row${entry.kind === MORE_ROW ? ' gc-pr--more' : ''}`);
+      if (interactive) item.href = entry.url;
+      if (entry.tip) item.title = entry.tip;
+
+      const icon = node('span', 'gc-icon', entry.icon);
+      icon.dataset.kind = entry.kind;
+      item.append(icon, node('span', 'gc-pr-title', entry.title));
+      if (entry.tail) item.append(node('span', 'gc-news-tail', entry.tail));
+
+      const index = newsItems.length;
+      const activate = () => {
+        if (newsIndex === index) return;
+        newsIndex = index;
+        paint();
+      };
+      item.addEventListener('mousemove', activate);
+      item.addEventListener('mouseenter', () => {
+        popHover = { item, column: newsEl };
+        placePop();
+      });
+      item.addEventListener('mouseleave', () => {
+        popHover = null;
+        placePop();
+      });
+      item.addEventListener('click', (event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
+        cancelSearch();
+        onClose();
+      });
+
+      newsItems.push({ entry, item });
+      row.append(item);
+      return row;
+    }
+
+    function repoSection(entry) {
+      const row = node('li', 'gc-section gc-section--lane gc-section--repo');
+      const name = node('span', null, entry.repo);
+      if (entry.private) name.title = 'private repository';
+      row.append(name, node('span', 'gc-rule'));
+      return row;
+    }
+
+    /**
+     * One section per subscribed repository, in the order they were subscribed. Before the edition
+     * reaches a repository it is two skeleton rows; after, exactly the rows it earned — or one quiet
+     * line, or the sentence that stands where its day would be. The header says what the whole
+     * column covers, once, so the sections need not repeat it. Whether the column is in the layout
+     * at all follows the list: the first subscription raises it, the last unsubscription lets it go.
+     */
+    function renderNews() {
+      if (!newsEl) return;
+      newsList.textContent = '';
+      newsItems = [];
+      if (popHover?.column === newsEl) popHover = null;
+      hidePop();
+
+      const data = newsData ?? {};
+      const repos = data.repos ?? [];
+      stage.dataset.news = String(repos.length > 0);
+      newsSince.textContent = data.sinceLabel ?? '';
+
+      for (const entry of repos) {
+        newsList.append(repoSection(entry));
+        if (entry.rows === null) {
+          skeletons(NEWS_SLOTS, newsList, true);
+          continue;
+        }
+        for (const row of entry.rows) newsList.append(newsRow(newsEntry(row)));
+        if (entry.rows.length === 0) {
+          const empty = note(entry.error ?? 'nothing new');
+          empty.classList.add('gc-note--pr');
+          if (entry.error) empty.dataset.error = 'true';
+          newsList.append(empty);
+        }
+      }
+
+      newsIndex = Math.max(0, Math.min(newsIndex, newsItems.length - 1));
+      paint();
+    }
+
+    /**
+     * The edition painted instantly; if the background said it was not this morning's, ask for it
+     * and repaint when it lands. A later navigation or subscription owns the result.
+     */
+    async function refreshNews() {
+      if (!newsEl || !newsData?.stale) return;
+      const run = ++newsRun;
+      let next = null;
+      try {
+        const response = await api.runtime.sendMessage({ type: 'gitchop:news:refresh' });
+        if (response?.ok) next = response;
+      } catch {
+        /* keep what is already on screen */
+      }
+      if (run !== newsRun) return;
+      if (next) newsData = next;
+      renderNews();
+    }
+
+    /**
+     * Subscribing from the menu: the list is the background's to change, and its answer is the
+     * whole state, so the drill row flips, the command under Do flips, and the column gains or
+     * loses a section in one repaint. A new repository then has no place in the edition yet, so
+     * the refresh that follows fills it in.
+     */
+    async function toggleNews(repo, subscribe) {
+      if (newsBusy) return;
+      newsBusy = true;
+      const run = ++newsRun;
+      let next = null;
+      try {
+        const response = await api.runtime.sendMessage({ type: subscribe ? 'gitchop:news:subscribe' : 'gitchop:news:unsubscribe', repo });
+        if (response?.ok) next = response;
+      } catch {
+        /* the list stays as it was */
+      } finally {
+        newsBusy = false;
+      }
+      if (run !== newsRun || !next) return;
+      newsData = next;
+      renderNews();
+      render();
+      refreshNews();
     }
 
     function laneSection(lane) {
@@ -581,11 +823,28 @@ window.__gitchop = window.__gitchop || {};
       paint();
     }
 
+    function toNews() {
+      if (!newsVisible() || newsItems.length === 0) return;
+      region = 'news';
+      stage.dataset.region = region;
+      newsList.focus({ preventScroll: true });
+      paint();
+    }
+
     function toPanel() {
       region = 'panel';
       stage.dataset.region = region;
       filter.focus({ preventScroll: true });
       paint();
+    }
+
+    /** Tab walks the columns left to right and wraps; Shift+Tab walks back. */
+    function cycle(delta) {
+      const order = regions();
+      const next = order[(order.indexOf(region) + delta + order.length) % order.length];
+      if (next === 'news') toNews();
+      else if (next === 'pulls') toPulls();
+      else toPanel();
     }
 
     function movePulls(delta) {
@@ -594,33 +853,48 @@ window.__gitchop = window.__gitchop || {};
       paint();
     }
 
+    function moveNews(delta) {
+      if (newsItems.length === 0) return;
+      newsIndex = (newsIndex + delta + newsItems.length) % newsItems.length;
+      paint();
+    }
+
     /**
-     * Keys while the pull requests have the cursor. Anything printable hands the key to the filter:
-     * focus moves during keydown, so the character itself arrives there — you are never stuck in
-     * the column, you just start typing and you are searching.
+     * Keys while a side column has the cursor. The arrow that points at the panel comes back to
+     * it; anything printable hands the key to the filter: focus moves during keydown, so the
+     * character itself arrives there — you are never stuck in a column, you just start typing and
+     * you are searching.
      */
-    function pullsKeys(event) {
+    function sideKeys(event, { back, move, current }) {
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        movePulls(1);
+        move(1);
         return;
       }
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        movePulls(-1);
+        move(-1);
         return;
       }
-      if (event.key === 'ArrowLeft') {
+      if (event.key === back) {
         event.preventDefault();
         toPanel();
         return;
       }
       if (event.key === 'Enter') {
         event.preventDefault();
-        open(pullsItems[pullsIndex]?.entry, event.metaKey || event.ctrlKey || event.shiftKey);
+        open(current(), event.metaKey || event.ctrlKey || event.shiftKey);
         return;
       }
       if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) toPanel();
+    }
+
+    function pullsKeys(event) {
+      sideKeys(event, { back: 'ArrowLeft', move: movePulls, current: () => pullsItems[pullsIndex]?.entry });
+    }
+
+    function newsKeys(event) {
+      sideKeys(event, { back: 'ArrowRight', move: moveNews, current: () => newsItems[newsIndex]?.entry });
     }
 
     function scheduleSearch() {
@@ -797,17 +1071,16 @@ window.__gitchop = window.__gitchop || {};
         event.preventDefault();
         event.stopPropagation();
         if (form) closeForm();
-        else if (region === 'pulls') toPanel();
+        else if (region !== 'panel') toPanel();
         else if (!leaveDrill()) onClose();
         return;
       }
-      // With the pull requests on screen, Tab crosses the gutter and back; without it, it wraps inside
-      // the panel as it always has.
+      // With a column on screen, Tab crosses the gutter — left to right, wrapping at the end, and
+      // Shift+Tab back; without one, it wraps inside the panel as it always has.
       if (event.key === 'Tab') {
-        if (!form && pullsVisible() && pullsItems.length > 0) {
+        if (!form && regions().length > 1) {
           event.preventDefault();
-          if (region === 'panel') toPulls();
-          else toPanel();
+          cycle(event.shiftKey ? -1 : 1);
         } else {
           trapTab(event);
         }
@@ -816,6 +1089,10 @@ window.__gitchop = window.__gitchop || {};
       if (form) return;
       if (region === 'pulls') {
         pullsKeys(event);
+        return;
+      }
+      if (region === 'news') {
+        newsKeys(event);
         return;
       }
       settle();
@@ -839,6 +1116,15 @@ window.__gitchop = window.__gitchop || {};
       if (event.key === 'ArrowLeft' && drill) {
         event.preventDefault();
         leaveDrill();
+        return;
+      }
+      // Left, likewise, only once the caret is at the start — with nothing typed, that is at once —
+      // and crosses to the news; Right in that column comes back.
+      if (event.key === 'ArrowLeft' && !drill) {
+        const atStart = filter.selectionStart === 0 && filter.selectionEnd === 0;
+        if (!atStart || !newsVisible() || newsItems.length === 0) return;
+        event.preventDefault();
+        toNews();
         return;
       }
 
@@ -867,12 +1153,20 @@ window.__gitchop = window.__gitchop || {};
 
     render();
     renderPulls();
+    renderNews();
     refreshPulls();
+    refreshNews();
 
     return {
       element: stage,
+      /**
+       * Called once the stage is in the page, which is the first moment the columns have a layout
+       * to be visible in — so the strip is painted again here, or a fresh snapshot with nothing to
+       * refresh would leave it not mentioning them until the cursor moved.
+       */
       focus() {
         filter.focus();
+        paint();
       },
     };
   };

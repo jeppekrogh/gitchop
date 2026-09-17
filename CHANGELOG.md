@@ -3,6 +3,52 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
+## Unreleased
+
+- **News from the repositories you follow.** Subscribe to a repository and a third column rises on
+  the left of the menu with what happened in it: a release outranks everything, then how many
+  commits landed and by whom, then the pull requests merged, opened and closed without merging,
+  then the issues — a handful of rows per repository, a *more* row pointing at its Pulse past that,
+  and one quiet line when nothing did. It is a morning paper, not a feed: the edition is made up
+  once a day at the hour set in Settings (08:00 to begin with), covers everything since the previous
+  edition — yesterday at the same hour, or back to Friday's on a Monday when the browser was shut
+  over the weekend, up to a week — and is left alone until the next, so the header can say in one
+  line what the whole column covers. Only this morning's edition is ever shown: yesterday's, still
+  on file, is skeletons and a refresh rather than a stale page under a header that says otherwise.
+- Subscribing is a row inside a repository: <kbd>→</kbd> on any repository row now offers
+  **Subscribe to news** under *Pull requests* and *Issues*, and the same row unsubscribes. On a
+  repository's own page the command sits under *Do*, since the links that point inside a repository
+  have no row for the repository itself. The first subscription raises the column at once and the
+  last lets it go, with the menu still open. The list travels with the profile in sync storage,
+  capped at thirty.
+- <kbd>←</kbd> from the search — with the caret at the start, which with nothing typed is at once —
+  crosses into the news; <kbd>→</kbd> comes back; <kbd>Tab</kbd> now walks news, links, pull
+  requests and round again, <kbd>Shift</kbd>+<kbd>Tab</kbd> the other way. Typing anything in
+  either column drops back into the search as before. The strip under the panel mentions both
+  columns, and drops <kbd>esc</kbd> when both are there to make room. Three columns need about
+  1280 px, where all three squeeze a little; below that the news steps out first, being the newer
+  arrival, and below 980 px the menu is what it was.
+- Each repository costs five plain REST requests a day — the repository itself, the commits on its
+  default branch inside the window, the pull requests and issues that moved lately, the recent
+  releases — so public repositories need no token at all. A private one is fetched with whichever
+  saved token can see it, tried in the order that worked last time, anonymous last; a repository
+  that fails keeps what it had, says why, and is asked again after a quarter of an hour rather than
+  on every open. Everything is filtered against the window here, since only the commits endpoint
+  takes an `until`.
+- A **News** card in Settings: the switch, the edition hour as a slider shown as a clock, every
+  subscribed repository with what the edition made of it — so many items, quiet, or the sentence
+  GitHub gave — an **Unsubscribe** each, a field to add one by name or pasted URL, and a **Refresh
+  now** that asks again without moving the window. It follows a subscription made in the menu
+  without a reload.
+- The strip under the panel is painted once more the moment the menu is in the page, so a fresh
+  snapshot with nothing to refresh no longer leaves it silent about the columns until the cursor
+  moves — that was true of the pull requests before this. In Settings, the token list shared a
+  class with the placeholder table and inherited its two columns, so two tokens sat side by side;
+  the list of subscribed repositories would have too.
+- The release workflow now runs every test, not the two it had when there were two; the privacy
+  notes say what the news asks GitHub for and what is kept, and the token card counts five calls
+  rather than four.
+
 ## 2.4.0
 
 - **Pull requests beside the menu.** With a token saved, a second column rises next to the panel:

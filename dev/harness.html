@@ -47,6 +47,15 @@
       const SLOW = Number(params.get('slow') || 1);
       const FREEZE = Number(params.get('freeze') || 0);
 
+      // ?openshadow lets a script reach the menu — the real overlay closes its shadow root, and a
+      // driver checking which column has the cursor needs a way in.
+      if (params.has('openshadow')) {
+        const nativeShadow = Element.prototype.attachShadow;
+        Element.prototype.attachShadow = function (init) {
+          return nativeShadow.call(this, { ...init, mode: 'open' });
+        };
+      }
+
       if (SLOW !== 1 || FREEZE) {
         const native = Element.prototype.animate;
         Element.prototype.animate = function (keyframes, options) {
@@ -158,6 +167,52 @@
         return { ok: true, show: true, stale: false, fetchedAgo: 'now', error: null, lanes: filled };
       }
 
+      // The news, as the background would answer it. ?news=off hides the column and the subscribe
+      // rows, ?news=empty is the feature on with nothing subscribed yet (→ on a repository row shows
+      // the way in), ?news=fail has one repository the token cannot see, and ?news=cached paints this
+      // morning's edition straight away instead of skeletons first.
+      const newsMode = params.get('news') ?? 'on';
+      const newsRepos = newsMode === 'empty' ? [] : ['itk-dev/economics', 'os2display/display-api-service', 'Leantime/leantime'];
+      const newsWindow = { since: '2026-09-16T06:00:00.000Z', until: '2026-09-17T06:00:00.000Z' };
+      const item = (kind, title, tail, url, over = {}) => ({ kind, title, tail, url, ...over });
+      const NEWS = {
+        'itk-dev/economics': [
+          item('release', 'v3.1.0 — Quarterly export', 'release', 'https://github.com/itk-dev/economics/releases/tag/v3.1.0'),
+          item('commits', '23 commits to develop', 'tuj, jekuno +2', 'https://github.com/itk-dev/economics/commits/develop', { tip: 'Round VAT lines the way the bank does' }),
+          item('pull', 'Quarterly export, with the long title that has to be cut off somewhere sensible', 'merged', 'https://github.com/itk-dev/economics/pull/88'),
+          item('pull', 'Invoice numbering', 'merged', 'https://github.com/itk-dev/economics/pull/84'),
+          item('pull', 'Import from the bank export', 'opened', 'https://github.com/itk-dev/economics/pull/79'),
+          item('issue', 'Rounding wrong in VAT lines', 'opened', 'https://github.com/itk-dev/economics/issues/90'),
+          item('issue', 'Export chokes on empty projects', 'closed', 'https://github.com/itk-dev/economics/issues/71'),
+          item('more', '4 more on GitHub', '', 'https://github.com/itk-dev/economics/pulse'),
+        ],
+        'os2display/display-api-service': [],
+        'leantime/leantime': [
+          item('commits', '4 commits to master', 'marcel', 'https://github.com/Leantime/leantime/commits/master'),
+          item('pull', 'Docker healthcheck', 'merged', 'https://github.com/Leantime/leantime/pull/2201'),
+        ],
+      };
+      function newsAnswer(message, filled) {
+        if (newsMode === 'off') return { ok: true, show: false, settings: { enabled: 0, hour: 8, repos: [] }, repos: [] };
+        const repos = newsRepos.map((repo) => {
+          const rows = NEWS[repo.toLowerCase()] ?? [item('commits', '2 commits to main', 'someone', `https://github.com/${repo}/commits/main`)];
+          const failed = newsMode === 'fail' && repo === 'os2display/display-api-service';
+          if (!filled) return { repo, url: `https://github.com/${repo}`, private: false, rows: null, quiet: false, error: null };
+          if (failed) return { repo, url: `https://github.com/${repo}`, private: true, rows: [], quiet: false, error: 'Not found, or the token cannot see it.' };
+          return { repo, url: `https://github.com/${repo}`, private: repo.startsWith('itk-dev'), rows, quiet: rows.length === 0, error: null };
+        });
+        return {
+          ok: true,
+          show: true,
+          settings: { enabled: 1, hour: 8, repos: newsRepos.slice() },
+          stale: !filled,
+          ...newsWindow,
+          sinceLabel: 'since yesterday 08:00',
+          fetchedAt: filled ? '2026-09-17T06:00:04.000Z' : null,
+          repos,
+        };
+      }
+
       const storageListeners = [];
       window.browser = window.chrome = {
         runtime: {
@@ -176,6 +231,25 @@
             if (message.type === 'gitchop:pulls:refresh') {
               await new Promise((done) => setTimeout(done, 900));
               return pullsAnswer(message);
+            }
+            if (message.type === 'gitchop:news') return newsAnswer(message, newsMode === 'cached');
+            if (message.type === 'gitchop:news:refresh') {
+              await new Promise((done) => setTimeout(done, 900));
+              return newsAnswer(message, true);
+            }
+            if (message.type === 'gitchop:news:subscribe' || message.type === 'gitchop:news:unsubscribe') {
+              const subscribe = message.type.endsWith(':subscribe');
+              const at = newsRepos.findIndex((repo) => repo.toLowerCase() === message.repo.toLowerCase());
+              if (subscribe && at < 0) newsRepos.push(message.repo);
+              if (!subscribe && at >= 0) newsRepos.splice(at, 1);
+              // A repository just subscribed has no rows yet; everything else keeps this morning's.
+              const answer = newsAnswer(message, true);
+              if (subscribe) {
+                const fresh = answer.repos.find((entry) => entry.repo === message.repo);
+                if (fresh) Object.assign(fresh, { rows: null, quiet: false });
+                answer.stale = true;
+              }
+              return answer;
             }
             if (message.type !== 'gitchop:repos') return { ok: true };
             await new Promise((done) => setTimeout(done, 260));
