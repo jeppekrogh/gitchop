@@ -1,0 +1,26 @@
+version: "3"
+
+tasks:
+  default:
+    silent: true
+    cmds:
+      - task --list
+
+  harness:
+    desc: Serve the harness over http and open it — the menu, the effect sliders and the settings page
+    cmds:
+      - node dev/serve.mjs --open {{.CLI_ARGS}}
+
+  test:
+    desc: Run every test
+    cmds:
+      - node dev/context.test.mjs
+      - node dev/repos.test.mjs
+      - node dev/effects.test.mjs
+      - node dev/pulls.test.mjs
+      - node dev/news.test.mjs
+
+  build:
+    desc: Package the extension for every browser, or one — `task build -- chrome --no-zip` for an unpacked one
+    cmds:
+      - node dev/build.mjs {{.CLI_ARGS | default "all"}}

@@ -5,8 +5,9 @@
  * `dev/harness.html` open it. Bound to 127.0.0.1 only: that counts as a secure context, which the
  * page's crypto.randomUUID needs, and nothing else on the network gets a look at the source tree.
  *
- * Usage: node dev/serve.mjs [port]      (8765 unless told otherwise)
+ * Usage: node dev/serve.mjs [port] [--open]      (8765 unless told otherwise; --open opens the harness)
  */
+import { spawn } from 'node:child_process';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -14,7 +15,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
-const port = Number(process.argv[2] ?? 8765);
+const args = process.argv.slice(2);
+const port = Number(args.find((arg) => /^\d+$/.test(arg)) ?? 8765);
+const openBrowser = args.includes('--open');
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -61,6 +64,12 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(port, '127.0.0.1', () => {
-  console.log(`harness   http://127.0.0.1:${port}/dev/harness.html`);
-  console.log(`settings  http://127.0.0.1:${port}/dev/harness.html?settings`);
+  const harness = `http://127.0.0.1:${port}/dev/harness.html`;
+  console.log(`harness   ${harness}`);
+  console.log(`settings  ${harness}?settings`);
+  if (!openBrowser) return;
+  // The default browser, once the port is actually listening — so no race with the first request.
+  const opener = { darwin: 'open', linux: 'xdg-open', win32: 'explorer' }[process.platform];
+  if (!opener) return;
+  spawn(opener, [harness], { stdio: 'ignore', detached: true }).unref();
 });
