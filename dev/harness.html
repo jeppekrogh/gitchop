@@ -174,32 +174,62 @@
       const newsMode = params.get('news') ?? 'on';
       const newsRepos = newsMode === 'empty' ? [] : ['itk-dev/economics', 'os2display/display-api-service', 'Leantime/leantime'];
       const newsWindow = { since: '2026-09-16T06:00:00.000Z', until: '2026-09-17T06:00:00.000Z' };
-      const item = (kind, title, tail, url, over = {}) => ({ kind, title, tail, url, ...over });
+      // Prose as the background writes it: plain text and chips, each chip carrying what its
+      // popover lists and what Enter opens.
+      const seg = (text) => ({ text });
+      const fact = (text, kind, url, items, total) => ({ text, chip: { kind, url, items, total: total ?? items.length } });
+      const line = (title, detail, url) => ({ title, detail, url });
+      const eco = 'https://github.com/itk-dev/economics';
+      const lean = 'https://github.com/Leantime/leantime';
       const NEWS = {
         'itk-dev/economics': [
-          item('release', 'v3.1.0 — Quarterly export', 'release', 'https://github.com/itk-dev/economics/releases/tag/v3.1.0'),
-          item('commits', '23 commits to develop', 'tuj, jekuno +2', 'https://github.com/itk-dev/economics/commits/develop', { tip: 'Round VAT lines the way the bank does' }),
-          item('pull', 'Quarterly export, with the long title that has to be cut off somewhere sensible', 'merged', 'https://github.com/itk-dev/economics/pull/88'),
-          item('pull', 'Invoice numbering', 'merged', 'https://github.com/itk-dev/economics/pull/84'),
-          item('pull', 'Import from the bank export', 'opened', 'https://github.com/itk-dev/economics/pull/79'),
-          item('issue', 'Rounding wrong in VAT lines', 'opened', 'https://github.com/itk-dev/economics/issues/90'),
-          item('issue', 'Export chokes on empty projects', 'closed', 'https://github.com/itk-dev/economics/issues/71'),
-          item('more', '4 more on GitHub', '', 'https://github.com/itk-dev/economics/pulse'),
+          seg('Released '),
+          fact('v3.1.0', 'release', `${eco}/releases/tag/v3.1.0`, [line('v3.1.0 — Quarterly export', 'release', `${eco}/releases/tag/v3.1.0`)]),
+          seg(' — Quarterly export. '),
+          fact('23 commits', 'commits', `${eco}/commits/develop`, [
+            line('Round VAT lines the way the bank does', 'a1b2c3d · tuj', `${eco}/commit/a1b2c3d`),
+            line('Quarterly export, with the long title that has to be cut off somewhere sensible', 'b2c3d4e · jekuno', `${eco}/commit/b2c3d4e`),
+            line('Invoice numbering', 'c3d4e5f · tuj', `${eco}/commit/c3d4e5f`),
+            line('Import from the bank export', 'd4e5f6a · marcel', `${eco}/commit/d4e5f6a`),
+            line('Release 3.1.0', 'e5f6a7b · tuj', `${eco}/commit/e5f6a7b`),
+          ], 23),
+          seg(' to develop by tuj, jekuno and 2 more. '),
+          fact('2 pull requests merged', 'pull', `${eco}/pulls?q=is%3Apr+is%3Amerged`, [
+            line('Quarterly export, with the long title that has to be cut off somewhere sensible', '#88 · tuj', `${eco}/pull/88`),
+            line('Invoice numbering', '#84 · jekuno', `${eco}/pull/84`),
+          ]),
+          seg(', '),
+          fact('1 opened', 'pull', `${eco}/pulls?q=is%3Apr`, [line('Import from the bank export', '#79 · tuj', `${eco}/pull/79`)]),
+          seg(' and '),
+          fact('1 closed', 'pull', `${eco}/pulls?q=is%3Apr+is%3Aunmerged`, [line('Try the other rounding', '#77 · marcel', `${eco}/pull/77`)]),
+          seg(' without merging. '),
+          fact('2 issues opened', 'issue', `${eco}/issues`, [
+            line('Rounding wrong in VAT lines', '#90 · anna', `${eco}/issues/90`),
+            line('Export chokes on empty projects', '#89 · tuj', `${eco}/issues/89`),
+          ]),
+          seg(' and '),
+          fact('1 closed', 'issue', `${eco}/issues?q=is%3Aclosed`, [line('Totals off by one øre', '#71 · anna', `${eco}/issues/71`)]),
+          seg('.'),
         ],
         'os2display/display-api-service': [],
         'leantime/leantime': [
-          item('commits', '4 commits to master', 'marcel', 'https://github.com/Leantime/leantime/commits/master'),
-          item('pull', 'Docker healthcheck', 'merged', 'https://github.com/Leantime/leantime/pull/2201'),
+          fact('4 commits', 'commits', `${lean}/commits/master`, [line('Docker healthcheck', 'f00ba12 · marcel', `${lean}/commit/f00ba12`)], 4),
+          seg(' to master by marcel. '),
+          fact('1 pull request merged', 'pull', `${lean}/pulls`, [line('Docker healthcheck', '#2201 · marcel', `${lean}/pull/2201`)]),
+          seg('.'),
         ],
       };
       function newsAnswer(message, filled) {
         if (newsMode === 'off') return { ok: true, show: false, settings: { enabled: 0, hour: 8, repos: [] }, repos: [] };
         const repos = newsRepos.map((repo) => {
-          const rows = NEWS[repo.toLowerCase()] ?? [item('commits', '2 commits to main', 'someone', `https://github.com/${repo}/commits/main`)];
+          const prose = NEWS[repo.toLowerCase()] ?? [
+            fact('2 commits', 'commits', `https://github.com/${repo}/commits/main`, [line('Tidy up', '0a1b2c3 · someone', `https://github.com/${repo}/commit/0a1b2c3`)], 2),
+            seg(' to main by someone.'),
+          ];
           const failed = newsMode === 'fail' && repo === 'os2display/display-api-service';
-          if (!filled) return { repo, url: `https://github.com/${repo}`, private: false, rows: null, quiet: false, error: null };
-          if (failed) return { repo, url: `https://github.com/${repo}`, private: true, rows: [], quiet: false, error: 'Not found, or the token cannot see it.' };
-          return { repo, url: `https://github.com/${repo}`, private: repo.startsWith('itk-dev'), rows, quiet: rows.length === 0, error: null };
+          if (!filled) return { repo, url: `https://github.com/${repo}`, private: false, prose: null, quiet: false, error: null };
+          if (failed) return { repo, url: `https://github.com/${repo}`, private: true, prose: [], quiet: false, error: 'Not found, or the token cannot see it.' };
+          return { repo, url: `https://github.com/${repo}`, private: repo.startsWith('itk-dev'), prose, quiet: prose.length === 0, error: null };
         });
         return {
           ok: true,
@@ -242,11 +272,11 @@
               const at = newsRepos.findIndex((repo) => repo.toLowerCase() === message.repo.toLowerCase());
               if (subscribe && at < 0) newsRepos.push(message.repo);
               if (!subscribe && at >= 0) newsRepos.splice(at, 1);
-              // A repository just subscribed has no rows yet; everything else keeps this morning's.
+              // A repository just subscribed has no prose yet; everything else keeps this morning's.
               const answer = newsAnswer(message, true);
               if (subscribe) {
                 const fresh = answer.repos.find((entry) => entry.repo === message.repo);
-                if (fresh) Object.assign(fresh, { rows: null, quiet: false });
+                if (fresh) Object.assign(fresh, { prose: null, quiet: false });
                 answer.stale = true;
               }
               return answer;

@@ -642,26 +642,84 @@ window.__gitchop.CSS = `
   white-space: nowrap;
 }
 
-/* The tail takes what it needs up to a share of the row, and the title has the rest. */
-.gc-news-row {
-  grid-template-columns: 18px minmax(0, 1fr) fit-content(40%);
+/*
+ * One repository is a few sentences, and every fact in them is a chip: the thing the cursor lands
+ * on, and the thing that opens. The words between are dimmer, so the facts read first.
+ */
+.gc-prose-row {
+  padding: 2px 15px 9px 13px;
 }
 
-.gc-news-row .gc-icon {
-  color: var(--gc-dim);
+.gc-prose {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--gc-heading);
 }
 
-.gc-news-row .gc-icon[data-kind="release"] {
+.gc-chip {
   color: var(--gc-text);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+  padding: 1px 0;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.gc-news-tail {
-  min-width: 0;
+.gc-chip[data-active="true"] {
+  background: rgba(255, 255, 255, 0.07);
+  border-bottom-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07);
+}
+
+/* The column's place is kept while the cursor is elsewhere, but quietly. */
+.gc-stage:not([data-region="news"]) .gc-chip[data-active="true"] {
+  background: transparent;
+  box-shadow: none;
+  border-bottom-color: rgba(255, 255, 255, 0.5);
+}
+
+/*
+ * What a fact is made of: a short list under its sentence, one line per pull request, commit or
+ * release, each a link. Unlike the title popover it can be entered, so it takes the pointer —
+ * only while shown, or an invisible sheet would sit over the prose.
+ */
+.gc-pop--list {
+  padding: 5px 0;
+}
+
+.gc-pop--list[data-shown="true"] {
+  pointer-events: auto;
+}
+
+.gc-pop-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 10px;
+  color: var(--gc-text);
+  text-decoration: none;
+}
+
+a.gc-pop-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.gc-pop-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: right;
+  font-size: 12px;
+}
+
+.gc-pop-detail {
   font: 400 10px/1 var(--gc-mono);
+  color: var(--gc-dim);
+  white-space: nowrap;
+}
+
+.gc-pop-item--more .gc-pop-title {
+  font: 400 11px/1.2 var(--gc-mono);
   color: var(--gc-dim);
 }
 `;

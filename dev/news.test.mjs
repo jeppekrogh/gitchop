@@ -6,7 +6,7 @@ import {
   DEFAULTS,
   HOUR,
   LOOKBACK_DAYS,
-  ROWS_PER_REPO,
+  POP_ITEMS,
   SWITCHES,
   describeSince,
   editionTime,
@@ -15,9 +15,10 @@ import {
   isQuiet,
   isRepoName,
   isSubscribed,
-  nameAuthors,
+  listPhrase,
   nextEditionTime,
-  rowsFor,
+  proseFor,
+  proseText,
   sanitizeSettings,
   shapeCommits,
   shapeIssues,
@@ -137,8 +138,10 @@ const commits = shapeCommits(
 assert.equal(commits.count, 3, 'the one before the window is dropped');
 assert.deepEqual(commits.authors, ['tuj', 'Someone Else'], 'logins deduplicate without case; an unlinked commit falls back to the name');
 assert.equal(commits.branch, 'main');
-assert.equal(commits.latest, 'Newest first', 'the first line of the newest message');
-assert.deepEqual(shapeCommits(null, window, ''), { count: 0, authors: [], branch: '', latest: '' });
+assert.equal(commits.recent.length, 3, 'the recent few ride along for the popover');
+assert.deepEqual(commits.recent[0], { sha: 'abc', message: 'Newest first', author: 'tuj', url: '' }, 'the first line of the message, and who');
+assert.equal(commits.recent[2].author, 'Someone Else');
+assert.deepEqual(shapeCommits(null, window, ''), { count: 0, authors: [], branch: '', recent: [] });
 
 const pr = (number, over = {}) => ({
   number,
@@ -195,58 +198,83 @@ assert.deepEqual(
   'drafts and old releases are out; prereleases are in and say so',
 );
 
-// Rows: a release outranks everything, then the commits line, then pull requests, then issues.
-const digest = {
-  ...emptyDigest('itk-dev/economics'),
-  commits,
-  pulls,
-  issues,
-  releases,
-};
+// Prose: a release outranks everything, then the commits as one count, then pull requests, then issues.
+const digest = { ...emptyDigest('itk-dev/economics'), commits, pulls, issues, releases };
 assert.ok(!isQuiet(digest));
 assert.ok(isQuiet(emptyDigest('a/b')));
 assert.ok(isQuiet(null));
-assert.deepEqual(rowsFor(emptyDigest('a/b'), window), [], 'a quiet day is no rows, and the menu says so');
+assert.deepEqual(proseFor(emptyDigest('a/b'), window), [], 'a quiet day is no prose, and the menu says so');
 
-const rows = rowsFor(digest, window);
-assert.deepEqual(
-  rows.map((row) => [row.kind, row.tail]),
-  [
-    ['release', 'release'],
-    ['release', 'prerelease'],
-    ['commits', 'tuj, Someone Else'],
-    ['pull', 'merged'],
-    ['pull', 'opened'],
-    ['pull', 'closed'],
-    ['issue', 'opened'],
-    ['issue', 'closed'],
-  ],
-);
-assert.equal(rows[0].title, 'v2.4.0 — Pull requests beside the menu', 'tag and name, when the name adds something');
-assert.equal(rows[1].title, 'v2.5.0-rc1', 'a nameless release is its tag');
-assert.equal(rows[2].title, '3 commits to main');
-assert.equal(rows[2].tip, 'Newest first', 'the latest message rides along as the tooltip');
+const prose = proseFor(digest, window);
 assert.equal(
-  rows[2].url,
-  `https://github.com/itk-dev/economics/commits/main?since=${encodeURIComponent(window.since)}&until=${encodeURIComponent(window.until)}`,
-  'the commits row opens GitHub’s own list, cut to the window',
+  proseText(prose),
+  'Released v2.4.0 and v2.5.0-rc1. 3 commits to main by tuj and Someone Else. ' +
+    '1 pull request merged, 1 opened and 1 closed without merging. 1 issue opened and 1 closed.',
 );
-assert.equal(rows[3].title, 'PR 1');
-assert.equal(rows[3].author, 'tuj');
+const chips = prose.filter((segment) => segment.chip);
+assert.deepEqual(
+  chips.map((segment) => [segment.text, segment.chip.kind]),
+  [
+    ['v2.4.0 and v2.5.0-rc1', 'release'],
+    ['3 commits', 'commits'],
+    ['1 pull request merged', 'pull'],
+    ['1 opened', 'pull'],
+    ['1 closed', 'pull'],
+    ['1 issue opened', 'issue'],
+    ['1 closed', 'issue'],
+  ],
+  'the noun rides on the first part of a clause only',
+);
+assert.equal(chips[0].chip.url, 'https://github.com/itk-dev/economics/releases', 'two releases point at the list');
+assert.deepEqual(
+  chips[0].chip.items.map((item) => [item.title, item.detail]),
+  [['v2.4.0 — Pull requests beside the menu', 'release'], ['v2.5.0-rc1', 'prerelease']],
+);
+assert.equal(
+  chips[1].chip.url,
+  `https://github.com/itk-dev/economics/commits/main?since=${encodeURIComponent(window.since)}&until=${encodeURIComponent(window.until)}`,
+  'the commits chip opens GitHub’s own list, cut to the window',
+);
+assert.equal(chips[1].chip.total, 3);
+assert.deepEqual(chips[1].chip.items[0], { title: 'Newest first', detail: 'abc · tuj', url: '' }, 'the message, then sha and who');
+assert.equal(
+  chips[2].chip.url,
+  `https://github.com/itk-dev/economics/pulls?q=${encodeURIComponent('is:pr is:merged merged:2026-09-16T06:00:00Z..2026-09-17T06:00:00Z')}`,
+  'a search cut to the window, with the milliseconds GitHub will not take dropped',
+);
+assert.deepEqual(chips[2].chip.items, [{ title: 'PR 1', detail: '#1 · tuj', url: 'https://github.com/a/b/pull/1' }]);
+assert.match(decodeURIComponent(chips[4].chip.url), /is:pr is:closed is:unmerged closed:/, 'closed means closed without merging');
+assert.match(decodeURIComponent(chips[5].chip.url), /\/issues\?q=is:issue created:/);
+assert.match(decodeURIComponent(chips[6].chip.url), /is:issue is:closed closed:/);
+
+const single = proseFor({ ...emptyDigest('a/b'), releases: [releases[0]] }, window);
+assert.equal(proseText(single), 'Released v2.4.0 — Pull requests beside the menu.', 'one release: its tag is the chip, its name follows');
+assert.equal(single[1].chip.url, 'https://github.com/a/b/releases/tag/v2.4.0', 'and it points at the release itself');
+assert.equal(proseText(proseFor({ ...emptyDigest('a/b'), releases: [releases[1]] }, window)), 'Published prerelease v2.5.0-rc1.');
+assert.equal(
+  proseText(proseFor({ ...emptyDigest('a/b'), commits: { count: 1, authors: ['solo'], branch: '', recent: [] } }, window)),
+  '1 commit by solo.',
+  'singular, and no branch when none is known',
+);
+assert.equal(
+  proseText(proseFor({ ...emptyDigest('a/b'), pulls: { merged: [], opened: [], closed: pulls.closed } }, window)),
+  '1 pull request closed without merging.',
+);
+assert.equal(proseText(proseFor({ ...emptyDigest('a/b'), issues: { opened: [], closed: issues.closed } }, window)), '1 issue closed.');
 
 const busy = {
   ...emptyDigest('a/b'),
   pulls: { merged: Array.from({ length: 12 }, (_, i) => ({ number: i, title: `Merged ${i}`, url: `https://github.com/a/b/pull/${i}`, author: 'x' })), opened: [], closed: [] },
 };
-const capped = rowsFor(busy, window);
-assert.equal(capped.length, ROWS_PER_REPO, 'a busy repository is cut to the cap, the tail included');
-assert.deepEqual(capped[ROWS_PER_REPO - 1], { kind: 'more', title: '5 more on GitHub', tail: '', url: 'https://github.com/a/b/pulse' });
-assert.equal(rowsFor(busy, window, 12).length, 12, 'exactly at the cap, no tail is needed');
-assert.equal(rowsFor({ ...emptyDigest('a/b'), commits: { count: 1, authors: ['solo'], branch: '', latest: '' } }, window)[0].title, '1 commit', 'singular, and no branch when none is known');
+const [mergedChip] = proseFor(busy, window).filter((segment) => segment.chip);
+assert.equal(mergedChip.text, '12 pull requests merged');
+assert.equal(mergedChip.chip.items.length, POP_ITEMS, 'a busy fact lists a handful and points at GitHub for the rest');
+assert.equal(mergedChip.chip.total, 12);
 
-assert.equal(nameAuthors([]), '');
-assert.equal(nameAuthors(['tuj']), 'tuj');
-assert.equal(nameAuthors(['tuj', 'jekuno']), 'tuj, jekuno');
-assert.equal(nameAuthors(['tuj', 'jekuno', 'marcel', 'anna']), 'tuj, jekuno +2');
+assert.equal(listPhrase([]), '');
+assert.equal(listPhrase(['tuj']), 'tuj');
+assert.equal(listPhrase(['tuj', 'jekuno']), 'tuj and jekuno');
+assert.equal(listPhrase(['tuj', 'jekuno', 'marcel']), 'tuj, jekuno and marcel', 'three are named, not two and one more');
+assert.equal(listPhrase(['tuj', 'jekuno', 'marcel', 'anna']), 'tuj, jekuno and 2 more');
 
 console.log('news ok');

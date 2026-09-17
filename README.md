@@ -98,13 +98,18 @@ narrower than about 980 px have no room for it, and the menu is what it always w
 ## News
 
 Subscribe to a repository and a column rises on the other side of the menu with what happened in
-it: a release, how many commits landed and by whom, the pull requests merged and opened, the issues
-opened and closed — most newsworthy first, a handful of rows per repository, and a quiet line when
-nothing did. It is a morning paper rather than a feed. The edition is made up once a day, at
-08:00 unless Settings says otherwise, and covers everything since the previous one: yesterday at
-the same hour on an ordinary day, and back to Friday's on a Monday if the browser was shut over the
-weekend, up to a week. It is then left alone until the next, so glancing at it twice in a day shows
-the same page. The header says what it covers.
+it, told in a few sentences: *Released v3.1.0. 23 commits to develop by tuj, jekuno and 2 more.
+2 pull requests merged, 1 opened and 1 closed without merging. 2 issues opened and 1 closed.* A
+quiet day says *nothing new*. Every fact in the prose is a chip: hover it, or walk to it with
+↑ ↓, and what it is made of unfolds beneath the sentence — the pull requests behind the count,
+the last few commit messages, the releases by name — each a link, with a *more* line when there is
+more than fits. ↵ on the chip opens GitHub's own list of exactly that, cut to the window.
+
+It is a morning paper rather than a feed. The edition is made up once a day, at 08:00 unless
+Settings says otherwise, and covers everything since the previous one: yesterday at the same hour
+on an ordinary day, and back to Friday's on a Monday if the browser was shut over the weekend, up
+to a week. It is then left alone until the next, so glancing at it twice in a day shows the same
+page. The header says what it covers.
 
 To subscribe, press → on any repository row — a saved link that points at a repository, or a
 search result — and choose **Subscribe to news** under *Pull requests* and *Issues*; the same row
@@ -113,8 +118,7 @@ that point inside a repository do not have a row for the repository itself. Sett
 a way to add one by name, the edition hour, a switch for the column, and a **Refresh now** that
 asks GitHub again without moving the window.
 
-← from the search crosses into the column, ↑ ↓ walk the rows, ↵ opens — the commits line opens
-GitHub's own list cut to the window, a *more* row opens the repository's Pulse — → comes back, and
+← from the search crosses into the column, ↑ ↓ walk the chips, ↵ opens, → comes back, and
 typing anything drops you straight back into the search. Tab walks news, links, pull requests and
 round again. Public repositories need no token; a private one is fetched with whichever saved
 token can see it, and says so in Settings when none can. Three columns need about 1280 px; below

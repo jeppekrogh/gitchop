@@ -12,8 +12,8 @@ const MAX_REPOS = 30;
  * away is one digest rather than six lost days, short enough that the digest is still a digest.
  */
 export const LOOKBACK_DAYS = 7;
-/** Detail rows per repository, before the tail points at the repository's own Pulse page. */
-export const ROWS_PER_REPO = 8;
+/** Detail lines a chip's popover shows before pointing at GitHub for the rest. */
+export const POP_ITEMS = 8;
 /** How many pull requests, issues and releases are fetched per repository and window. */
 const PAGE = 50;
 /** Every fetched item is capped to keep the edition small enough for storage.local to hold thirty repositories of it. */
@@ -162,23 +162,27 @@ function login(user) {
 }
 
 /**
- * Commits become one fact — how many, by whom — plus the first lines, kept only so a row can
- * show the latest message. The author is the GitHub login when GitHub matched one, else the name
+ * Commits become one fact — how many, by whom — and the most recent few, so the popover can show
+ * what the count is made of. The author is the GitHub login when GitHub matched one, else the name
  * on the commit, so a rebased or unlinked commit still counts as somebody's.
  */
 export function shapeCommits(list, window, branch) {
   const commits = (Array.isArray(list) ? list : []).filter((entry) => within(entry?.commit?.committer?.date ?? entry?.commit?.author?.date, window));
   const authors = [];
+  const recent = [];
   for (const entry of commits) {
     const name = login(entry.author) || String(entry.commit?.author?.name ?? '').trim().slice(0, 60);
     if (name && !authors.some((seen) => seen.toLowerCase() === name.toLowerCase())) authors.push(name);
+    if (recent.length < KEEP) {
+      recent.push({
+        sha: String(entry.sha ?? '').slice(0, 7),
+        message: firstLine(entry.commit?.message),
+        author: name,
+        url: String(entry.html_url ?? ''),
+      });
+    }
   }
-  return {
-    count: commits.length,
-    authors,
-    branch: String(branch ?? '').slice(0, 120),
-    latest: commits.length > 0 ? firstLine(commits[0].commit?.message) : '',
-  };
+  return { count: commits.length, authors, branch: String(branch ?? '').slice(0, 120), recent };
 }
 
 function shapeIssueLike(item) {
@@ -237,7 +241,7 @@ export function emptyDigest(repo) {
     repo,
     url: `https://github.com/${repo}`,
     private: false,
-    commits: { count: 0, authors: [], branch: '', latest: '' },
+    commits: { count: 0, authors: [], branch: '', recent: [] },
     pulls: { merged: [], opened: [], closed: [] },
     issues: { opened: [], closed: [] },
     releases: [],
@@ -256,12 +260,17 @@ export function isQuiet(digest) {
   );
 }
 
-/** "tuj, jekuno and 2 more" — the people behind the commits, first names first. */
-export function nameAuthors(authors, shown = 2) {
-  const list = authors ?? [];
+/** "tuj", "tuj and jekuno", "tuj, jekuno and marcel", "tuj, jekuno and 4 more" — people, in prose. */
+export function listPhrase(names, shown = 2) {
+  const list = (names ?? []).filter(Boolean);
   if (list.length === 0) return '';
-  if (list.length <= shown) return list.join(', ');
-  return `${list.slice(0, shown).join(', ')} +${list.length - shown}`;
+  if (list.length === 1) return list[0];
+  if (list.length <= shown + 1) return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+  return `${list.slice(0, shown).join(', ')} and ${list.length - shown} more`;
+}
+
+function plural(count, noun) {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 function commitsUrl(digest, window) {
@@ -269,51 +278,119 @@ function commitsUrl(digest, window) {
   return `${digest.url}/commits/${branch}?since=${encodeURIComponent(window.since)}&until=${encodeURIComponent(window.until)}`;
 }
 
+/** GitHub's search takes a date range with times in it; the milliseconds are the one thing it will not. */
+function stamp(iso) {
+  return String(iso).replace(/\.\d{3}Z$/, 'Z');
+}
+
+/** GitHub's own list of exactly this — the pull requests merged inside the window, say. */
+function searchUrl(digest, list, qualifiers, field, window) {
+  const query = `${qualifiers} ${field}:${stamp(window.since)}..${stamp(window.until)}`;
+  return `${digest.url}/${list}?q=${encodeURIComponent(query)}`;
+}
+
+function issueItems(list) {
+  return (list ?? []).map((item) => ({
+    title: item.title || `#${item.number}`,
+    detail: [`#${item.number}`, item.author].filter(Boolean).join(' · '),
+    url: item.url,
+  }));
+}
+
+const plain = (text) => ({ text });
+
+/** A fact the reader can hover or land on: its popover lists `items`, and Enter opens `url`. */
+function chip(text, kind, url, items, total = items.length) {
+  return { text, chip: { kind, url, items: items.slice(0, POP_ITEMS), total } };
+}
+
 /**
- * What one repository's day becomes on screen, most newsworthy first: a release outranks
- * everything, then the commits as one line, then what was merged, opened, and closed without
- * merging, then the issues. Past `limit` rows the tail points at the repository's own Pulse page,
- * which is GitHub's version of the same digest. Every row is a kind, a title, a tail word and a
- * URL; the menu decides the glyphs.
+ * "2 pull requests merged, 1 opened and 1 closed without merging." The noun rides on the first
+ * part only; the rest are a number and a verb, which is how the sentence would be said aloud.
  */
-export function rowsFor(digest, window, limit = ROWS_PER_REPO) {
-  const rows = [];
-  for (const release of digest.releases ?? []) {
-    rows.push({
-      kind: 'release',
+function clause(segments, parts, noun, kind) {
+  if (parts.length === 0) return;
+  parts.forEach((part, index) => {
+    if (index > 0) segments.push(plain(index === parts.length - 1 ? ' and ' : ', '));
+    const text = index === 0 ? `${plural(part.count, noun)} ${part.verb}` : `${part.count} ${part.verb}`;
+    segments.push(chip(text, kind, part.url, part.items));
+    if (part.tail) segments.push(plain(part.tail));
+  });
+  segments.push(plain('. '));
+}
+
+/**
+ * What one repository's day becomes on screen: a few sentences, most newsworthy first — a release
+ * outranks everything, then the commits as one count, then the pull requests, then the issues.
+ * Every fact in them is a chip: its popover lists what it is made of, and its link opens GitHub's
+ * own list of exactly that, cut to the window. Segments are plain text or a chip, and the menu
+ * draws them in order. A quiet day is no segments, and the menu says so.
+ */
+export function proseFor(digest, window) {
+  const segments = [];
+
+  const releases = digest.releases ?? [];
+  if (releases.length > 0) {
+    const [first] = releases;
+    const items = releases.map((release) => ({
       title: release.name && release.name !== release.tag ? `${release.tag} — ${release.name}` : release.tag,
-      tail: release.prerelease ? 'prerelease' : 'release',
+      detail: release.prerelease ? 'prerelease' : 'release',
       url: release.url,
-    });
-  }
-  const commits = digest.commits ?? { count: 0, authors: [] };
-  if (commits.count > 0) {
-    const where = commits.branch ? ` to ${commits.branch}` : '';
-    rows.push({
-      kind: 'commits',
-      title: `${commits.count} commit${commits.count === 1 ? '' : 's'}${where}`,
-      tail: nameAuthors(commits.authors),
-      url: commitsUrl(digest, window),
-      tip: commits.latest,
-    });
-  }
-  const pulls = digest.pulls ?? {};
-  const issues = digest.issues ?? {};
-  const items = [
-    ...(pulls.merged ?? []).map((pull) => ({ kind: 'pull', tail: 'merged', item: pull })),
-    ...(pulls.opened ?? []).map((pull) => ({ kind: 'pull', tail: 'opened', item: pull })),
-    ...(pulls.closed ?? []).map((pull) => ({ kind: 'pull', tail: 'closed', item: pull })),
-    ...(issues.opened ?? []).map((issue) => ({ kind: 'issue', tail: 'opened', item: issue })),
-    ...(issues.closed ?? []).map((issue) => ({ kind: 'issue', tail: 'closed', item: issue })),
-  ];
-  for (const { kind, tail, item } of items) {
-    rows.push({ kind, title: item.title || `#${item.number}`, tail, url: item.url, number: item.number, author: item.author });
+    }));
+    if (releases.length === 1) {
+      segments.push(plain(first.prerelease ? 'Published prerelease ' : 'Released '), chip(first.tag, 'release', first.url, items));
+      if (first.name && first.name !== first.tag) segments.push(plain(` — ${first.name}`));
+    } else {
+      const tags = listPhrase(releases.map((release) => release.tag));
+      segments.push(plain('Released '), chip(tags, 'release', `${digest.url}/releases`, items));
+    }
+    segments.push(plain('. '));
   }
 
-  if (rows.length <= limit) return rows;
-  const kept = rows.slice(0, limit - 1);
-  kept.push({ kind: 'more', title: `${rows.length - kept.length} more on GitHub`, tail: '', url: `${digest.url}/pulse` });
-  return kept;
+  const commits = digest.commits ?? {};
+  if (commits.count > 0) {
+    const items = (commits.recent ?? []).map((entry) => ({
+      title: entry.message || entry.sha,
+      detail: [entry.sha, entry.author].filter(Boolean).join(' · '),
+      url: entry.url,
+    }));
+    segments.push(chip(plural(commits.count, 'commit'), 'commits', commitsUrl(digest, window), items, commits.count));
+    if (commits.branch) segments.push(plain(` to ${commits.branch}`));
+    const who = listPhrase(commits.authors);
+    if (who) segments.push(plain(` by ${who}`));
+    segments.push(plain('. '));
+  }
+
+  const pulls = digest.pulls ?? {};
+  const pullParts = [];
+  if (pulls.merged?.length > 0) {
+    pullParts.push({ count: pulls.merged.length, verb: 'merged', url: searchUrl(digest, 'pulls', 'is:pr is:merged', 'merged', window), items: issueItems(pulls.merged) });
+  }
+  if (pulls.opened?.length > 0) {
+    pullParts.push({ count: pulls.opened.length, verb: 'opened', url: searchUrl(digest, 'pulls', 'is:pr', 'created', window), items: issueItems(pulls.opened) });
+  }
+  if (pulls.closed?.length > 0) {
+    pullParts.push({ count: pulls.closed.length, verb: 'closed', tail: ' without merging', url: searchUrl(digest, 'pulls', 'is:pr is:closed is:unmerged', 'closed', window), items: issueItems(pulls.closed) });
+  }
+  clause(segments, pullParts, 'pull request', 'pull');
+
+  const issues = digest.issues ?? {};
+  const issueParts = [];
+  if (issues.opened?.length > 0) {
+    issueParts.push({ count: issues.opened.length, verb: 'opened', url: searchUrl(digest, 'issues', 'is:issue', 'created', window), items: issueItems(issues.opened) });
+  }
+  if (issues.closed?.length > 0) {
+    issueParts.push({ count: issues.closed.length, verb: 'closed', url: searchUrl(digest, 'issues', 'is:issue is:closed', 'closed', window), items: issueItems(issues.closed) });
+  }
+  clause(segments, issueParts, 'issue', 'issue');
+
+  if (segments.length > 0) segments[segments.length - 1] = plain('.');
+  return segments;
+}
+
+/** The same sentences as one string, for anywhere without chips — the settings page, a tooltip. */
+export function proseText(segments) {
+  return (segments ?? []).map((segment) => segment.text).join('');
 }
 
 function headers(token) {

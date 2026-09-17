@@ -1,5 +1,5 @@
 import { api } from '../lib/links.js';
-import { HOUR, SWITCHES, isRepoName } from '../lib/news.js';
+import { HOUR, SWITCHES, isRepoName, proseText } from '../lib/news.js';
 
 const host = document.getElementById('news');
 const statusEl = document.getElementById('news-status');
@@ -141,10 +141,10 @@ function repoList(state) {
     name.append(link(entry.repo, entry.url));
 
     let detail;
-    if (entry.rows === null) detail = 'not in this edition yet';
+    if (entry.prose === null) detail = 'not in this edition yet';
     else if (entry.error) detail = entry.error;
     else if (entry.quiet) detail = 'quiet';
-    else detail = `${entry.rows.length} item${entry.rows.length === 1 ? '' : 's'}`;
+    else detail = proseText(entry.prose);
     const detailEl = element('span', 'token-detail', detail);
     detailEl.title = detail;
     name.append(detailEl);
@@ -209,11 +209,13 @@ function render(state, error) {
     element(
       'p',
       'note',
-      'A column on the far side of the menu with what happened in the repositories you follow: ' +
-        'releases, commits, pull requests merged and opened, issues. It is a morning paper rather than ' +
-        'a feed — made up once a day at the hour below, covering everything since the previous edition, ' +
-        'and left alone until the next. ← from the search crosses into it, → comes back, and typing ' +
-        'anything comes straight back to the search.',
+      'A column on the far side of the menu with what happened in the repositories you follow, told ' +
+        'in a few sentences each — a release, the commits and who made them, the pull requests merged ' +
+        'and opened, the issues. Every fact is a chip: hover it, or land on it with the arrows, and what ' +
+        'it is made of unfolds beneath. It is a morning paper rather than a feed — made up once a day ' +
+        'at the hour below, covering everything since the previous edition, and left alone until the ' +
+        'next. ← from the search crosses into it, → comes back, and typing anything comes straight ' +
+        'back to the search.',
     ),
   );
 

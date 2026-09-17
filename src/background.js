@@ -19,7 +19,7 @@ import {
   fetchDigest,
   isQuiet,
   nextEditionTime,
-  rowsFor,
+  proseFor,
   sanitizeSettings as newsSettings,
   toggleRepo,
 } from './lib/news.js';
@@ -599,21 +599,21 @@ function refreshNews({ force = false } = {}) {
 
 /**
  * The edition as the menu draws it: one section per subscribed repository, in the order they were
- * subscribed, each with its rows already ranked and cut — the menu is a classic content script and
- * cannot import the module that ranks them. `rows` is null for a repository the edition has not
- * reached yet, which is the menu's cue to draw skeletons; empty rows are a quiet day, or the
- * failure that stands where the day would be.
+ * subscribed, each already told as prose — the menu is a classic content script and cannot import
+ * the module that writes it. `prose` is null for a repository the edition has not reached yet,
+ * which is the menu's cue to draw skeletons; empty prose is a quiet day, or the failure that
+ * stands where the day would be.
  */
 function presentNews(cache, settings) {
   const window = cache?.since && cache?.until ? { since: cache.since, until: cache.until } : null;
   return settings.repos.map((repo) => {
     const part = window ? cache.repos?.[repo.toLowerCase()] : null;
-    if (!part) return { repo, url: `https://github.com/${repo}`, private: false, rows: null, quiet: false, error: null };
+    if (!part) return { repo, url: `https://github.com/${repo}`, private: false, prose: null, quiet: false, error: null };
     return {
       repo: part.repo || repo,
       url: part.url || `https://github.com/${repo}`,
       private: Boolean(part.private),
-      rows: rowsFor(part, window),
+      prose: proseFor(part, window),
       quiet: !part.error && isQuiet(part),
       error: part.error ?? null,
     };

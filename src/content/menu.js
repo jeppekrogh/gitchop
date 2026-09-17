@@ -41,10 +41,10 @@ window.__gitchop = window.__gitchop || {};
   /** The one row in a lane that is not a pull request: the tail for whatever GitHub holds beyond what was fetched. */
   const MORE_ROW = 'more';
 
-  /** What each kind of news looks like at the start of its row; the tail word says the rest. */
-  const NEWS_GLYPHS = { release: '▲', commits: '⇡', pull: '⇄', issue: '◦', more: '…' };
   /** Skeleton rows standing in for a repository the edition has not reached yet. */
   const NEWS_SLOTS = 2;
+  /** How long a fact's popover outlives the mouse leaving the fact — long enough to cross into it. */
+  const POP_LINGER = 160;
 
   gc.createMenu = function createMenu({ ctx, links, pulls, news, onClose, onOptions, onLinksChanged }) {
     const panel = node('div', 'gc-panel');
@@ -118,15 +118,14 @@ window.__gitchop = window.__gitchop || {};
       stage.append(pullsEl);
     }
 
-    // The full title of a row that had to cut it short, shown the instant the row is hovered or
-    // becomes the cursor. One element for both side columns, moved to whichever row — and into
-    // whichever column, since it is placed against that column's box. Shown and hidden by an
-    // attribute rather than `hidden`, so it can fade and rise into place.
+    // The full title of a pull request whose row had to cut it short, shown the instant the row is
+    // hovered or becomes the cursor. One element for the whole column, moved to whichever row.
+    // Shown and hidden by an attribute rather than `hidden`, so it can fade and rise into place.
     const pop = node('div', 'gc-pop');
     pop.dataset.shown = 'false';
     pop.setAttribute('role', 'tooltip');
     pop.setAttribute('aria-hidden', 'true');
-    (pullsEl ?? newsEl)?.append(pop);
+    pullsEl?.append(pop);
     let popHover = null;
 
     function hidePop() {
@@ -134,14 +133,13 @@ window.__gitchop = window.__gitchop || {};
       pop.setAttribute('aria-hidden', 'true');
     }
 
-    function popFor(item, column) {
+    function popFor(item) {
       const title = item?.querySelector('.gc-pr-title');
-      if (!title || !column || title.scrollWidth <= title.clientWidth) {
+      if (!title || title.scrollWidth <= title.clientWidth) {
         hidePop();
         return;
       }
-      if (pop.parentNode !== column) column.append(pop);
-      const box = column.getBoundingClientRect();
+      const box = pullsEl.getBoundingClientRect();
       const row = item.getBoundingClientRect();
       const at = title.getBoundingClientRect();
       // Under the row, starting where the title starts and never past the column's edge. Only when
@@ -157,16 +155,113 @@ window.__gitchop = window.__gitchop || {};
       pop.setAttribute('aria-hidden', 'false');
     }
 
-    /** Whatever the mouse is over wins; otherwise the cursor, if it is in a side column. */
+    /** Whatever the mouse is over wins; otherwise the cursor, if it is in this column. */
     function placePop() {
-      if (!pullsEl && !newsEl) return;
-      if (popHover) popFor(popHover.item, popHover.column);
-      else if (region === 'pulls') popFor(pullsItems[pullsIndex]?.item, pullsEl);
-      else if (region === 'news') popFor(newsItems[newsIndex]?.item, newsEl);
+      if (!pullsEl) return;
+      if (popHover) popFor(popHover);
+      else if (region === 'pulls') popFor(pullsItems[pullsIndex]?.item);
       else hidePop();
     }
     pullsList?.addEventListener('scroll', hidePop, { passive: true });
-    newsList?.addEventListener('scroll', hidePop, { passive: true });
+
+    /**
+     * What a fact in the news is made of — the pull requests behind "2 pull requests merged", the
+     * messages behind "23 commits" — under the sentence it sits in, the moment the chip is hovered
+     * or becomes the cursor. Unlike the title above it can be entered: every line is a link, so it
+     * stays while the mouse crosses from the chip into it and goes a beat after the mouse has left
+     * both. One element for the column, filled per chip.
+     */
+    const newsPop = node('div', 'gc-pop gc-pop--list');
+    newsPop.dataset.shown = 'false';
+    newsPop.setAttribute('aria-hidden', 'true');
+    newsEl?.append(newsPop);
+    let newsHover = null;
+    let newsPopHovered = false;
+    let newsPopTimer = null;
+    let newsPopFor = null;
+
+    function hideNewsPop() {
+      clearTimeout(newsPopTimer);
+      newsPopTimer = null;
+      newsPopFor = null;
+      newsPop.dataset.shown = 'false';
+      newsPop.setAttribute('aria-hidden', 'true');
+    }
+
+    function popLine(title, detail, url, more = false) {
+      const usable = gc.isSafeUrl(url);
+      const line = node(usable ? 'a' : 'div', `gc-pop-item${more ? ' gc-pop-item--more' : ''}`);
+      if (usable) {
+        line.href = url;
+        line.addEventListener('click', (event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
+          cancelSearch();
+          onClose();
+        });
+      }
+      line.append(node('span', 'gc-pop-title', title));
+      if (detail) line.append(node('span', 'gc-pop-detail', detail));
+      return line;
+    }
+
+    function fillNewsPop(chip) {
+      newsPop.textContent = '';
+      for (const item of chip.items ?? []) newsPop.append(popLine(item.title, item.detail, item.url));
+      const rest = (chip.total ?? 0) - (chip.items?.length ?? 0);
+      if (rest > 0) newsPop.append(popLine(`${rest} more on GitHub`, '', chip.url, true));
+    }
+
+    function newsPopAt(chipEl, chip) {
+      if (!chipEl || !chip || (chip.items?.length ?? 0) === 0) {
+        hideNewsPop();
+        return;
+      }
+      clearTimeout(newsPopTimer);
+      newsPopTimer = null;
+      if (newsPopFor !== chipEl) {
+        fillNewsPop(chip);
+        newsPopFor = chipEl;
+      }
+      // Under the line the chip sits on, the width of the column's text; above only when the
+      // column has no room left beneath.
+      const box = newsEl.getBoundingClientRect();
+      const at = chipEl.getBoundingClientRect();
+      const left = 13;
+      newsPop.style.left = `${left}px`;
+      newsPop.style.width = `${Math.round(box.width - left - 15)}px`;
+      const below = at.bottom - box.top + 6 + newsPop.offsetHeight <= box.height - 6;
+      newsPop.dataset.below = String(below);
+      newsPop.style.top = `${Math.round((below ? at.bottom + 6 : at.top - 6) - box.top)}px`;
+      newsPop.dataset.shown = 'true';
+      newsPop.setAttribute('aria-hidden', 'false');
+    }
+
+    /** A beat before hiding, so the mouse can cross from the chip into the popover. */
+    function lingerNewsPop() {
+      if (newsPopTimer) return;
+      newsPopTimer = setTimeout(() => {
+        newsPopTimer = null;
+        if (!newsHover && !newsPopHovered && region !== 'news') hideNewsPop();
+      }, POP_LINGER);
+    }
+
+    /** The chip under the mouse wins; otherwise the cursor, while it is in the news; a popover being read stays. */
+    function placeNewsPop() {
+      if (!newsEl) return;
+      const target = newsHover ?? (region === 'news' ? newsItems[newsIndex] : null);
+      if (target) newsPopAt(target.item, target.entry.chip);
+      else if (!newsPopHovered) lingerNewsPop();
+    }
+    newsPop.addEventListener('mouseenter', () => {
+      newsPopHovered = true;
+      clearTimeout(newsPopTimer);
+      newsPopTimer = null;
+    });
+    newsPop.addEventListener('mouseleave', () => {
+      newsPopHovered = false;
+      placeNewsPop();
+    });
+    newsList?.addEventListener('scroll', hideNewsPop, { passive: true });
 
     let current = links.slice();
     let items = [];
@@ -383,6 +478,7 @@ window.__gitchop = window.__gitchop || {};
       });
       if (region === 'news') newsItems[newsIndex]?.item.scrollIntoView({ block: 'nearest' });
       placePop();
+      placeNewsPop();
 
       const order = regions();
       const across = order.includes('pulls');
@@ -576,7 +672,7 @@ window.__gitchop = window.__gitchop || {};
       };
       item.addEventListener('mousemove', activate);
       item.addEventListener('mouseenter', () => {
-        popHover = { item, column: pullsEl };
+        popHover = item;
         placePop();
       });
       item.addEventListener('mouseleave', () => {
@@ -595,35 +691,24 @@ window.__gitchop = window.__gitchop || {};
     }
 
     /**
-     * What one piece of news says about itself: a glyph for its kind, the title, and one word for
-     * what became of it — merged, opened, closed, release — or, on the commits line, who. The
-     * latest commit message rides along as the tooltip, since the line itself is only a count.
+     * A fact in the prose. The chip is what the cursor lands on and what Enter opens — GitHub's
+     * own list of exactly that, cut to the window — and the popover is what it is made of. Same
+     * gate as every other row: nothing becomes a link without passing the scheme check.
      */
-    function newsEntry(row) {
+    function chipEntry(segment) {
       return {
-        usable: gc.isSafeUrl(row.url),
-        url: row.url,
-        icon: NEWS_GLYPHS[row.kind] ?? '·',
-        kind: row.kind,
-        title: row.title || '',
-        tail: row.tail || '',
-        tip: row.tip || '',
+        usable: gc.isSafeUrl(segment.chip.url),
+        url: segment.chip.url,
+        kind: segment.chip.kind,
+        text: segment.text,
+        chip: segment.chip,
       };
     }
 
-    function newsRow(entry) {
-      const row = node('li');
-      row.setAttribute('role', 'option');
-
-      const interactive = entry.usable && gc.isSafeUrl(entry.url);
-      const item = node(interactive ? 'a' : 'div', `gc-item gc-pr gc-news-row${entry.kind === MORE_ROW ? ' gc-pr--more' : ''}`);
-      if (interactive) item.href = entry.url;
-      if (entry.tip) item.title = entry.tip;
-
-      const icon = node('span', 'gc-icon', entry.icon);
-      icon.dataset.kind = entry.kind;
-      item.append(icon, node('span', 'gc-pr-title', entry.title));
-      if (entry.tail) item.append(node('span', 'gc-news-tail', entry.tail));
+    function newsChip(entry) {
+      const item = node(entry.usable ? 'a' : 'span', 'gc-chip', entry.text);
+      if (entry.usable) item.href = entry.url;
+      item.dataset.kind = entry.kind;
 
       const index = newsItems.length;
       const activate = () => {
@@ -633,12 +718,12 @@ window.__gitchop = window.__gitchop || {};
       };
       item.addEventListener('mousemove', activate);
       item.addEventListener('mouseenter', () => {
-        popHover = { item, column: newsEl };
-        placePop();
+        newsHover = { item, entry };
+        placeNewsPop();
       });
       item.addEventListener('mouseleave', () => {
-        popHover = null;
-        placePop();
+        newsHover = null;
+        placeNewsPop();
       });
       item.addEventListener('click', (event) => {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
@@ -647,7 +732,18 @@ window.__gitchop = window.__gitchop || {};
       });
 
       newsItems.push({ entry, item });
-      row.append(item);
+      return item;
+    }
+
+    /** One repository's sentences: plain text and chips, in the order the prose puts them. */
+    function proseRow(segments) {
+      const row = node('li', 'gc-prose-row');
+      const prose = node('p', 'gc-prose');
+      for (const segment of segments) {
+        if (segment.chip) prose.append(newsChip(chipEntry(segment)));
+        else prose.append(document.createTextNode(segment.text));
+      }
+      row.append(prose);
       return row;
     }
 
@@ -661,17 +757,18 @@ window.__gitchop = window.__gitchop || {};
 
     /**
      * One section per subscribed repository, in the order they were subscribed. Before the edition
-     * reaches a repository it is two skeleton rows; after, exactly the rows it earned — or one quiet
-     * line, or the sentence that stands where its day would be. The header says what the whole
-     * column covers, once, so the sections need not repeat it. Whether the column is in the layout
-     * at all follows the list: the first subscription raises it, the last unsubscription lets it go.
+     * reaches a repository it is two skeleton rows; after, its day as a few sentences — or one
+     * quiet line, or the sentence that stands where its day would be. The header says what the
+     * whole column covers, once, so the sections need not repeat it. Whether the column is in the
+     * layout at all follows the list: the first subscription raises it, the last unsubscription
+     * lets it go.
      */
     function renderNews() {
       if (!newsEl) return;
       newsList.textContent = '';
       newsItems = [];
-      if (popHover?.column === newsEl) popHover = null;
-      hidePop();
+      newsHover = null;
+      hideNewsPop();
 
       const data = newsData ?? {};
       const repos = data.repos ?? [];
@@ -680,12 +777,13 @@ window.__gitchop = window.__gitchop || {};
 
       for (const entry of repos) {
         newsList.append(repoSection(entry));
-        if (entry.rows === null) {
+        if (entry.prose === null) {
           skeletons(NEWS_SLOTS, newsList, true);
           continue;
         }
-        for (const row of entry.rows) newsList.append(newsRow(newsEntry(row)));
-        if (entry.rows.length === 0) {
+        if (entry.prose.length > 0) {
+          newsList.append(proseRow(entry.prose));
+        } else {
           const empty = note(entry.error ?? 'nothing new');
           empty.classList.add('gc-note--pr');
           if (entry.error) empty.dataset.error = 'true';

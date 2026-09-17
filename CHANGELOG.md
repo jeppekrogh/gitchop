@@ -6,10 +6,15 @@ it from.
 ## Unreleased
 
 - **News from the repositories you follow.** Subscribe to a repository and a third column rises on
-  the left of the menu with what happened in it: a release outranks everything, then how many
-  commits landed and by whom, then the pull requests merged, opened and closed without merging,
-  then the issues — a handful of rows per repository, a *more* row pointing at its Pulse past that,
-  and one quiet line when nothing did. It is a morning paper, not a feed: the edition is made up
+  the left of the menu with what happened in it, told in a few sentences — *Released v3.1.0.
+  23 commits to develop by tuj, jekuno and 2 more. 2 pull requests merged, 1 opened and 1 closed
+  without merging. 2 issues opened and 1 closed.* — most newsworthy first, and one quiet line when
+  nothing did. Every fact in the prose is a chip: hover it, or walk to it with <kbd>↑</kbd><kbd>↓</kbd>,
+  and what it is made of unfolds beneath the sentence — the pull requests behind the count, the
+  last few commit messages with who made them, the releases by name — each line a link, with a
+  *more* line when there is more than fits; the popover stays while the mouse crosses into it and
+  goes a beat after it leaves. <kbd>↵</kbd> on the chip opens GitHub's own list of exactly that,
+  cut to the window. It is a morning paper, not a feed: the edition is made up
   once a day at the hour set in Settings (08:00 to begin with), covers everything since the previous
   edition — yesterday at the same hour, or back to Friday's on a Monday when the browser was shut
   over the weekend, up to a week — and is left alone until the next, so the header can say in one
