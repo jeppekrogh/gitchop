@@ -40,6 +40,12 @@ it from.
   GitHub gave — an **Unsubscribe** each, a field to add one by name or pasted URL, and a **Refresh
   now** that asks again without moving the window. It follows a subscription made in the menu
   without a reload.
+- The lists scroll with the mouse. The overlay stops the wheel so the page behind cannot move, and
+  it stopped it on the host — where every wheel inside the overlay had already been retargeted to
+  the same element, so the links list, the pull requests and now the news never scrolled by wheel
+  at all, only by keyboard. It listens on the menu layer now, where the real target is visible,
+  and a wheel over a list with room left in that direction is let through; everything else — dead
+  space, a list at its end — is still stopped, so nothing chains to the page.
 - The strip under the panel is painted once more the moment the menu is in the page, so a fresh
   snapshot with nothing to refresh no longer leaves it silent about the columns until the cursor
   moves — that was true of the pull requests before this. In Settings, the token list shared a
