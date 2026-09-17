@@ -26,6 +26,7 @@ body {
   max-width: 720px;
   margin: 0 auto;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 28px;
 }
 
@@ -244,6 +245,7 @@ dl.tokens {
 
   .card-body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   padding: 4px 0 18px;
   }
@@ -396,6 +398,7 @@ dl.tokens {
 
 .tokens {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1px;
   padding: 14px 18px 0;
 }
@@ -418,6 +421,11 @@ dl.tokens {
   gap: 9px;
   min-width: 0;
   flex: 1;
+}
+
+.token-name b,
+.token-name .link {
+  flex: none;
 }
 
 .token-name b {

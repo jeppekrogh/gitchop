@@ -7,7 +7,7 @@ tasks:
       - task --list
 
   harness:
-    desc: Serve the harness over http and open it — the menu, the effect sliders and the settings page
+    desc: Serve the harness over http and open it — the menu and the settings page
     cmds:
       - node dev/serve.mjs --open {{.CLI_ARGS}}
 

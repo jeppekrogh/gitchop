@@ -15,19 +15,6 @@
       }
       #tools input { width: 120px; }
       #settings { position: fixed; inset: 0; z-index: 5; width: 100vw; height: 100vh; border: 0; background: #fff; }
-      #fx {
-        position: fixed; bottom: 12px; right: 12px; z-index: 10;
-        display: grid; gap: 7px;
-        font: 12px ui-monospace, monospace; color: #24292f;
-        background: rgba(255,255,255,.9); border: 1px solid #d0d7de; padding: 10px 12px;
-      }
-      #fx b { font-weight: 600; letter-spacing: 0.04em; }
-      #fx .fxrow { display: grid; grid-template-columns: 80px 158px 52px; gap: 8px; align-items: center; }
-      #fx input[type="checkbox"] { justify-self: start; margin: 0; }
-      #fx output { text-align: right; }
-      #fx .chips { display: grid; grid-template-columns: repeat(9, 14px); gap: 4px; }
-      #fx .chips button { width: 14px; height: 14px; padding: 0; border: 1px solid #d0d7de; cursor: pointer; }
-      #fx .chips button[data-selected="true"] { outline: 2px solid #0969da; outline-offset: 1px; }
     </style>
   </head>
   <body>
@@ -37,12 +24,6 @@
       <button id="chop">chop (or press .)</button>
       <input id="typehere" placeholder="typing here = no chop" />
       <button id="settings-toggle">settings</button>
-    </div>
-    <!-- Served over http, the Settings row opens the real settings page in a frame that shares the
-         store and the background below with the menu; from file:// its ES modules will not load, and
-         these sliders stand in for its Chop effect card. They take the URL overrides either way. -->
-    <div id="fx">
-      <b>chop effect</b>
     </div>
 
     <script>
@@ -382,9 +363,9 @@
       // The settings page is the real options.html in a frame, fetched and handed two things before
       // its own scripts run: a <base>, so its relative paths still resolve from here, and the
       // harness's browser object, so it shares one store and one background with the menu — a slider
-      // moved there moves the sliders here, a token removed there takes the pull requests out of the
-      // menu. Its ES modules will not load from file://, which is what `node dev/serve.mjs` is for;
-      // ?settings opens it on load. Once made, the frame is hidden rather than torn down, so the
+      // moved there shapes the next chop here, a token removed there takes the pull requests out of
+      // the menu. Its ES modules will not load from file://, which is what `node dev/serve.mjs` is
+      // for; ?settings opens it on load. Once made, the frame is hidden rather than torn down, so the
       // listeners it registered stay valid.
       const SERVED = location.protocol === 'http:' || location.protocol === 'https:';
       let manifest = { name: 'gitchop for GitHub', version: 'harness' };
@@ -397,11 +378,7 @@
       }
       async function openSettings() {
         if (!SERVED) {
-          document.getElementById('state').textContent = 'settings need http: node dev/serve.mjs — the sliders stand in';
-          document.getElementById('fx').animate(
-            [{ boxShadow: '0 0 0 3px #0969da' }, { boxShadow: '0 0 0 3px rgba(9, 105, 218, 0)' }],
-            { duration: 1400, easing: 'ease-out' },
-          );
+          document.getElementById('state').textContent = 'settings need http: node dev/serve.mjs';
           return;
         }
         if (!frame) {
@@ -493,7 +470,7 @@
         storage: {
           sync: {
             get: async () => JSON.parse(JSON.stringify(store)),
-            // Notifies like the real API, so the content script's effects cache follows the sliders.
+            // Notifies like the real API, so the content script's effects cache follows the settings page.
             set: async (patch) => {
               const changes = {};
               for (const [key, value] of Object.entries(patch)) {
@@ -546,80 +523,7 @@
     <script src="../src/content/menu.js"></script>
     <script src="../src/content/main.js"></script>
     <script>
-      const fxRows = document.getElementById('fx');
-      // Every row reads the store rather than remembering what it last set, so a slider moved on the
-      // settings page moves here too.
-      const reflectors = [];
-      for (const spec of window.__gitchop.EFFECTS.SLIDERS) {
-        // A <label> would forward every click to its first button, so swatch rows are plain divs.
-        const row = document.createElement(spec.swatches ? 'div' : 'label');
-        row.className = 'fxrow';
-        row.title = spec.hint;
-        const name = document.createElement('span');
-        name.textContent = spec.label.toLowerCase();
-        const value = document.createElement('output');
-
-        if (spec.swatches) {
-          const chips = document.createElement('div');
-          chips.className = 'chips';
-          const mark = () => {
-            for (const chip of chips.children) {
-              chip.dataset.selected = String(Number(chip.dataset.value) === store.effects[spec.id]);
-            }
-            const current = spec.swatches.find((swatch) => swatch.value === store.effects[spec.id]);
-            value.textContent = current ? current.name : `${store.effects[spec.id]}°`;
-          };
-          for (const swatch of spec.swatches) {
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.title = swatch.name;
-            chip.dataset.value = String(swatch.value);
-            chip.style.background = swatch.value === 0 ? '#f2f5f8' : `hsl(${swatch.value} 75% 60%)`;
-            chip.addEventListener('click', () => {
-              browser.storage.sync.set({ effects: { ...store.effects, [spec.id]: swatch.value } });
-            });
-            chips.append(chip);
-          }
-          mark();
-          reflectors.push(mark);
-          row.append(name, chips, value);
-        } else if (spec.toggle) {
-          const input = document.createElement('input');
-          input.type = 'checkbox';
-          const reflect = () => {
-            input.checked = (store.effects[spec.id] ?? spec.value) === 1;
-            value.textContent = input.checked ? 'on' : 'off';
-          };
-          reflect();
-          reflectors.push(reflect);
-          input.addEventListener('change', () => {
-            browser.storage.sync.set({ effects: { ...store.effects, [spec.id]: input.checked ? 1 : 0 } });
-          });
-          row.append(name, input, value);
-        } else {
-          const input = document.createElement('input');
-          input.type = 'range';
-          input.min = String(spec.min);
-          input.max = String(spec.max);
-          input.step = '1';
-          const reflect = () => {
-            input.value = String(store.effects[spec.id] ?? spec.value);
-            value.textContent = input.value;
-          };
-          reflect();
-          reflectors.push(reflect);
-          input.addEventListener('input', () => {
-            browser.storage.sync.set({ effects: { ...store.effects, [spec.id]: Number(input.value) } });
-          });
-          row.append(name, input, value);
-        }
-        fxRows.append(row);
-      }
-      browser.storage.onChanged.addListener((changes) => {
-        if (changes.effects) for (const reflect of reflectors) reflect();
-      });
-
-      // harness.html?autochop&hue=210&tint=80 chops on load, so a reload replays the effect.
+      // harness.html?autochop&colour=210&epicness=90 chops on load, so a reload replays the effect.
       if (params.has('autochop')) document.getElementById('chop').click();
     </script>
   </body>

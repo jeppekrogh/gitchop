@@ -142,7 +142,7 @@ No build step for the code — the files in `src/` are what runs. Packaging only
 node dev/context.test.mjs && node dev/repos.test.mjs && node dev/effects.test.mjs && node dev/pulls.test.mjs && node dev/news.test.mjs
 node dev/build.mjs all                                 # dist/gitchop-<version>-<browser>.<ext>
 node dev/build.mjs chrome --no-zip                     # unpacked, for chrome://extensions
-open dev/harness.html                                  # the menu and effect sliders, without installing
+open dev/harness.html                                  # the menu, without installing
 node dev/serve.mjs --open                              # the same over http, where Settings opens the real settings page
 ```
 
