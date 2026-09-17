@@ -102,8 +102,10 @@ it, told in a few sentences: *Released v3.1.0. 23 commits to develop by tuj, jek
 2 pull requests merged, 1 opened and 1 closed without merging. 2 issues opened and 1 closed.* A
 quiet day says *nothing new*. Every fact in the prose is a chip: hover it, or walk to it with
 ↑ ↓, and what it is made of unfolds beneath the sentence — the pull requests behind the count,
-the last few commit messages, the releases by name — each a link, with a *more* line when there is
-more than fits. ↵ on the chip opens GitHub's own list of exactly that, cut to the window.
+every commit of the day with its message and author, the releases by name — each a link. The
+list scrolls inside the popover past about twenty lines, and once the mouse has opened it, it
+stays for as long as the mouse is anywhere over the column, so a busy day can be read without
+leaving the page. ↵ on the chip opens GitHub's own list of exactly that, cut to the window.
 
 It is a morning paper rather than a feed. The edition is made up once a day, at 08:00 unless
 Settings says otherwise, and covers everything since the previous one: yesterday at the same hour

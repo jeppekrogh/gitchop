@@ -12,12 +12,11 @@ const MAX_REPOS = 30;
  * away is one digest rather than six lost days, short enough that the digest is still a digest.
  */
 export const LOOKBACK_DAYS = 7;
-/** Detail lines a chip's popover shows before pointing at GitHub for the rest. */
-export const POP_ITEMS = 8;
 /** How many pull requests, issues and releases are fetched per repository and window. */
 const PAGE = 50;
-/** Every fetched item is capped to keep the edition small enough for storage.local to hold thirty repositories of it. */
-const KEEP = 20;
+/** Commits come a hundred a page, up to this many pages; a busier day than that says "more on GitHub". */
+const COMMIT_PAGE = 100;
+const COMMIT_PAGES = 3;
 
 /** One entry per control on the settings card; `value` is the default. */
 export const SWITCHES = [
@@ -162,27 +161,43 @@ function login(user) {
 }
 
 /**
- * Commits become one fact — how many, by whom — and the most recent few, so the popover can show
- * what the count is made of. The author is the GitHub login when GitHub matched one, else the name
- * on the commit, so a rebased or unlinked commit still counts as somebody's.
+ * Commits become one fact — how many, by whom — and every one of them, first line and author, so
+ * the popover can show the whole day without leaving the page. The author is the GitHub login when
+ * GitHub matched one, else the name on the commit, so a rebased or unlinked commit still counts as
+ * somebody's. `more` says the fetch stopped before the day did.
  */
 export function shapeCommits(list, window, branch) {
-  const commits = (Array.isArray(list) ? list : []).filter((entry) => within(entry?.commit?.committer?.date ?? entry?.commit?.author?.date, window));
+  const raw = Array.isArray(list) ? list : [];
+  const commits = raw.filter((entry) => within(entry?.commit?.committer?.date ?? entry?.commit?.author?.date, window));
   const authors = [];
   const recent = [];
   for (const entry of commits) {
     const name = login(entry.author) || String(entry.commit?.author?.name ?? '').trim().slice(0, 60);
     if (name && !authors.some((seen) => seen.toLowerCase() === name.toLowerCase())) authors.push(name);
-    if (recent.length < KEEP) {
-      recent.push({
-        sha: String(entry.sha ?? '').slice(0, 7),
-        message: firstLine(entry.commit?.message),
-        author: name,
-        url: String(entry.html_url ?? ''),
-      });
-    }
+    recent.push({
+      sha: String(entry.sha ?? '').slice(0, 7),
+      message: firstLine(entry.commit?.message),
+      author: name,
+      url: String(entry.html_url ?? ''),
+    });
   }
-  return { count: commits.length, authors, branch: String(branch ?? '').slice(0, 120), recent };
+  return {
+    count: commits.length,
+    authors,
+    branch: String(branch ?? '').slice(0, 120),
+    recent,
+    more: raw.length >= COMMIT_PAGE * COMMIT_PAGES,
+  };
+}
+
+/**
+ * A full page whose oldest item still moved inside the window may have left some behind; a full
+ * page whose oldest item is older than the window has shown everything the window holds.
+ */
+function pageCut(list, window) {
+  if (!Array.isArray(list) || list.length < PAGE) return false;
+  const oldest = Date.parse(list[list.length - 1]?.updated_at ?? '');
+  return Number.isNaN(oldest) || oldest >= Date.parse(window.since);
 }
 
 function shapeIssueLike(item) {
@@ -208,7 +223,7 @@ export function shapePulls(list, window) {
     else if (within(item.created_at, window)) opened.push(shapeIssueLike(item));
     else if (item.state === 'closed' && within(item.closed_at, window)) closed.push(shapeIssueLike(item));
   }
-  return { merged: merged.slice(0, KEEP), opened: opened.slice(0, KEEP), closed: closed.slice(0, KEEP) };
+  return { merged, opened, closed, more: pageCut(list, window) };
 }
 
 /** The issues endpoint returns pull requests too; anything carrying a pull_request key is not an issue. */
@@ -220,7 +235,7 @@ export function shapeIssues(list, window) {
     if (within(item.created_at, window)) opened.push(shapeIssueLike(item));
     else if (item.state === 'closed' && within(item.closed_at, window)) closed.push(shapeIssueLike(item));
   }
-  return { opened: opened.slice(0, KEEP), closed: closed.slice(0, KEEP) };
+  return { opened, closed, more: pageCut(list, window) };
 }
 
 /** Drafts are not published; a prerelease is, and says so. */
@@ -232,8 +247,7 @@ export function shapeReleases(list, window) {
       name: firstLine(item.name),
       url: String(item.html_url ?? ''),
       prerelease: Boolean(item.prerelease),
-    }))
-    .slice(0, KEEP);
+    }));
 }
 
 export function emptyDigest(repo) {
@@ -241,9 +255,9 @@ export function emptyDigest(repo) {
     repo,
     url: `https://github.com/${repo}`,
     private: false,
-    commits: { count: 0, authors: [], branch: '', recent: [] },
-    pulls: { merged: [], opened: [], closed: [] },
-    issues: { opened: [], closed: [] },
+    commits: { count: 0, authors: [], branch: '', recent: [], more: false },
+    pulls: { merged: [], opened: [], closed: [], more: false },
+    issues: { opened: [], closed: [], more: false },
     releases: [],
     error: null,
   };
@@ -299,21 +313,25 @@ function issueItems(list) {
 
 const plain = (text) => ({ text });
 
-/** A fact the reader can hover or land on: its popover lists `items`, and Enter opens `url`. */
-function chip(text, kind, url, items, total = items.length) {
-  return { text, chip: { kind, url, items: items.slice(0, POP_ITEMS), total } };
+/**
+ * A fact the reader can hover or land on: its popover lists every one of `items`, and Enter opens
+ * `url`. `more` is the one case the popover cannot be complete — the fetch stopped before the day
+ * did — and it then ends with a line pointing at GitHub.
+ */
+function chip(text, kind, url, items, more = false) {
+  return { text, chip: { kind, url, items, more: Boolean(more) } };
 }
 
 /**
  * "2 pull requests merged, 1 opened and 1 closed without merging." The noun rides on the first
  * part only; the rest are a number and a verb, which is how the sentence would be said aloud.
  */
-function clause(segments, parts, noun, kind) {
+function clause(segments, parts, noun, kind, more) {
   if (parts.length === 0) return;
   parts.forEach((part, index) => {
     if (index > 0) segments.push(plain(index === parts.length - 1 ? ' and ' : ', '));
     const text = index === 0 ? `${plural(part.count, noun)} ${part.verb}` : `${part.count} ${part.verb}`;
-    segments.push(chip(text, kind, part.url, part.items));
+    segments.push(chip(text, kind, part.url, part.items, more));
     if (part.tail) segments.push(plain(part.tail));
   });
   segments.push(plain('. '));
@@ -322,9 +340,9 @@ function clause(segments, parts, noun, kind) {
 /**
  * What one repository's day becomes on screen: a few sentences, most newsworthy first — a release
  * outranks everything, then the commits as one count, then the pull requests, then the issues.
- * Every fact in them is a chip: its popover lists what it is made of, and its link opens GitHub's
- * own list of exactly that, cut to the window. Segments are plain text or a chip, and the menu
- * draws them in order. A quiet day is no segments, and the menu says so.
+ * Every fact in them is a chip: its popover lists everything it is made of, and its link opens
+ * GitHub's own list of exactly that, cut to the window. Segments are plain text or a chip, and the
+ * menu draws them in order. A quiet day is no segments, and the menu says so.
  */
 export function proseFor(digest, window) {
   const segments = [];
@@ -354,7 +372,7 @@ export function proseFor(digest, window) {
       detail: [entry.sha, entry.author].filter(Boolean).join(' · '),
       url: entry.url,
     }));
-    segments.push(chip(plural(commits.count, 'commit'), 'commits', commitsUrl(digest, window), items, commits.count));
+    segments.push(chip(plural(commits.count, 'commit'), 'commits', commitsUrl(digest, window), items, commits.more));
     if (commits.branch) segments.push(plain(` to ${commits.branch}`));
     const who = listPhrase(commits.authors);
     if (who) segments.push(plain(` by ${who}`));
@@ -372,7 +390,7 @@ export function proseFor(digest, window) {
   if (pulls.closed?.length > 0) {
     pullParts.push({ count: pulls.closed.length, verb: 'closed', tail: ' without merging', url: searchUrl(digest, 'pulls', 'is:pr is:closed is:unmerged', 'closed', window), items: issueItems(pulls.closed) });
   }
-  clause(segments, pullParts, 'pull request', 'pull');
+  clause(segments, pullParts, 'pull request', 'pull', pulls.more);
 
   const issues = digest.issues ?? {};
   const issueParts = [];
@@ -382,7 +400,7 @@ export function proseFor(digest, window) {
   if (issues.closed?.length > 0) {
     issueParts.push({ count: issues.closed.length, verb: 'closed', url: searchUrl(digest, 'issues', 'is:issue is:closed', 'closed', window), items: issueItems(issues.closed) });
   }
-  clause(segments, issueParts, 'issue', 'issue');
+  clause(segments, issueParts, 'issue', 'issue', issues.more);
 
   if (segments.length > 0) segments[segments.length - 1] = plain('.');
   return segments;
@@ -439,19 +457,40 @@ export async function lookupRepo(repo, token) {
 }
 
 /**
- * One repository's window, in four requests after the lookup: the commits on the default branch
- * inside it, the pull requests and issues that moved lately, and the recent releases. Everything
- * is filtered here against the window, because only the commits endpoint takes an `until`.
+ * The window's commits, a page at a time until a page comes back short or the pages run out. A
+ * page that fails after the first keeps what the earlier ones brought; the first failing is the
+ * answer — an empty repository's 409 among them.
+ */
+async function getCommits(base, branch, window, token) {
+  const all = [];
+  for (let page = 1; page <= COMMIT_PAGES; page += 1) {
+    const query = `since=${encodeURIComponent(window.since)}&until=${encodeURIComponent(window.until)}&per_page=${COMMIT_PAGE}&page=${page}${branch}`;
+    const result = await get(`${base}/commits?${query}`, token);
+    if (!result.ok) {
+      if (page === 1) return result;
+      break;
+    }
+    const batch = Array.isArray(result.body) ? result.body : [];
+    all.push(...batch);
+    if (batch.length < COMMIT_PAGE) break;
+  }
+  return { ok: true, status: 200, body: all };
+}
+
+/**
+ * One repository's window, in four requests after the lookup — a fifth and sixth only on a day
+ * with more than a hundred commits: the commits on the default branch inside it, the pull
+ * requests and issues that moved lately, and the recent releases. Everything is filtered here
+ * against the window, because only the commits endpoint takes an `until`.
  */
 export async function fetchDigest(repo, window, token) {
   const about = await lookupRepo(repo, token);
   const base = `/repos/${about.fullName.split('/').map(encodeURIComponent).join('/')}`;
   const branch = about.branch ? `&sha=${encodeURIComponent(about.branch)}` : '';
   const since = encodeURIComponent(window.since);
-  const until = encodeURIComponent(window.until);
 
   const [commits, pulls, issues, releases] = await Promise.all([
-    get(`${base}/commits?since=${since}&until=${until}&per_page=100${branch}`, token),
+    getCommits(base, branch, window, token),
     get(`${base}/pulls?state=all&sort=updated&direction=desc&per_page=${PAGE}`, token),
     get(`${base}/issues?state=all&since=${since}&sort=updated&direction=desc&per_page=${PAGE}`, token),
     get(`${base}/releases?per_page=20`, token),

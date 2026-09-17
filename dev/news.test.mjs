@@ -6,7 +6,6 @@ import {
   DEFAULTS,
   HOUR,
   LOOKBACK_DAYS,
-  POP_ITEMS,
   SWITCHES,
   describeSince,
   editionTime,
@@ -138,10 +137,12 @@ const commits = shapeCommits(
 assert.equal(commits.count, 3, 'the one before the window is dropped');
 assert.deepEqual(commits.authors, ['tuj', 'Someone Else'], 'logins deduplicate without case; an unlinked commit falls back to the name');
 assert.equal(commits.branch, 'main');
-assert.equal(commits.recent.length, 3, 'the recent few ride along for the popover');
+assert.equal(commits.recent.length, 3, 'every commit rides along for the popover');
 assert.deepEqual(commits.recent[0], { sha: 'abc', message: 'Newest first', author: 'tuj', url: '' }, 'the first line of the message, and who');
 assert.equal(commits.recent[2].author, 'Someone Else');
-assert.deepEqual(shapeCommits(null, window, ''), { count: 0, authors: [], branch: '', recent: [] });
+assert.equal(commits.more, false);
+assert.equal(shapeCommits(Array.from({ length: 300 }, () => commit(inside)), window, 'main').more, true, 'three full pages: the fetch stopped before the day did');
+assert.deepEqual(shapeCommits(null, window, ''), { count: 0, authors: [], branch: '', recent: [], more: false });
 
 const pr = (number, over = {}) => ({
   number,
@@ -170,6 +171,11 @@ assert.deepEqual(pulls.merged.map((pull) => pull.number), [1], 'opened and merge
 assert.deepEqual(pulls.opened.map((pull) => pull.number), [2]);
 assert.deepEqual(pulls.closed.map((pull) => pull.number), [3], 'closed without merging');
 assert.deepEqual(pulls.merged[0], { number: 1, title: 'PR 1', url: 'https://github.com/a/b/pull/1', author: 'tuj' });
+assert.equal(pulls.more, false, 'a short page is the whole day');
+const flood = shapePulls(Array.from({ length: 50 }, (_, i) => pr(i, { created_at: inside, updated_at: inside })), window);
+assert.equal(flood.opened.length, 50, 'nothing is cut here — the popover scrolls');
+assert.ok(flood.more, 'a full page whose oldest item still moved inside the window may have left some behind');
+assert.ok(!shapePulls(Array.from({ length: 50 }, (_, i) => pr(i, { updated_at: before })), window).more, 'a full page older than the window has shown everything');
 
 const issues = shapeIssues(
   [
@@ -235,7 +241,8 @@ assert.equal(
   `https://github.com/itk-dev/economics/commits/main?since=${encodeURIComponent(window.since)}&until=${encodeURIComponent(window.until)}`,
   'the commits chip opens GitHub’s own list, cut to the window',
 );
-assert.equal(chips[1].chip.total, 3);
+assert.equal(chips[1].chip.items.length, 3, 'every commit is in the popover');
+assert.equal(chips[1].chip.more, false);
 assert.deepEqual(chips[1].chip.items[0], { title: 'Newest first', detail: 'abc · tuj', url: '' }, 'the message, then sha and who');
 assert.equal(
   chips[2].chip.url,
@@ -268,8 +275,11 @@ const busy = {
 };
 const [mergedChip] = proseFor(busy, window).filter((segment) => segment.chip);
 assert.equal(mergedChip.text, '12 pull requests merged');
-assert.equal(mergedChip.chip.items.length, POP_ITEMS, 'a busy fact lists a handful and points at GitHub for the rest');
-assert.equal(mergedChip.chip.total, 12);
+assert.equal(mergedChip.chip.items.length, 12, 'a busy fact lists every one; the popover scrolls');
+assert.equal(mergedChip.chip.more, false, 'and nothing points at GitHub for more, since there is no more');
+const [floodChip] = proseFor({ ...emptyDigest('a/b'), pulls: flood }, window).filter((segment) => segment.chip);
+assert.equal(floodChip.text, '50 pull requests opened');
+assert.ok(floodChip.chip.more, 'a cut page carries the flag into the popover');
 
 assert.equal(listPhrase([]), '');
 assert.equal(listPhrase(['tuj']), 'tuj');

@@ -10,11 +10,14 @@ it from.
   23 commits to develop by tuj, jekuno and 2 more. 2 pull requests merged, 1 opened and 1 closed
   without merging. 2 issues opened and 1 closed.* — most newsworthy first, and one quiet line when
   nothing did. Every fact in the prose is a chip: hover it, or walk to it with <kbd>↑</kbd><kbd>↓</kbd>,
-  and what it is made of unfolds beneath the sentence — the pull requests behind the count, the
-  last few commit messages with who made them, the releases by name — each line a link, with a
-  *more* line when there is more than fits; the popover stays while the mouse crosses into it and
-  goes a beat after it leaves. <kbd>↵</kbd> on the chip opens GitHub's own list of exactly that,
-  cut to the window. It is a morning paper, not a feed: the edition is made up
+  and what it is made of unfolds beneath the sentence — the pull requests behind the count, every
+  commit of the day with its message and who made it, the releases by name — each line a link.
+  Nothing is cut: the list scrolls inside the popover past about twenty lines, and once the mouse
+  has opened it, it stays for as long as the mouse is anywhere over the column, so a busy day can
+  be read and scrolled without leaving the page. Only a fetch that stopped before the day did — a
+  fourth hundred commits, a fifty-first pull request — ends the list with a line pointing at
+  GitHub. <kbd>↵</kbd> on the chip opens GitHub's own list of exactly that, cut to the window. It
+  is a morning paper, not a feed: the edition is made up
   once a day at the hour set in Settings (08:00 to begin with), covers everything since the previous
   edition — yesterday at the same hour, or back to Friday's on a Monday when the browser was shut
   over the weekend, up to a week — and is left alone until the next, so the header can say in one
@@ -34,8 +37,9 @@ it from.
   1280 px, where all three squeeze a little; below that the news steps out first, being the newer
   arrival, and below 980 px the menu is what it was.
 - Each repository costs five plain REST requests a day — the repository itself, the commits on its
-  default branch inside the window, the pull requests and issues that moved lately, the recent
-  releases — so public repositories need no token at all. A private one is fetched with whichever
+  default branch inside the window (a page more for every hundred beyond the first, up to three),
+  the pull requests and issues that moved lately, the recent releases — so public repositories
+  need no token at all. A private one is fetched with whichever
   saved token can see it, tried in the order that worked last time, anonymous last; a repository
   that fails keeps what it had, says why, and is asked again after a quarter of an hour rather than
   on every open. Everything is filtered against the window here, since only the commits endpoint

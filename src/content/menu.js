@@ -43,8 +43,8 @@ window.__gitchop = window.__gitchop || {};
 
   /** Skeleton rows standing in for a repository the edition has not reached yet. */
   const NEWS_SLOTS = 2;
-  /** How long a fact's popover outlives the mouse leaving the fact — long enough to cross into it. */
-  const POP_LINGER = 160;
+  /** About how many lines a fact's popover shows before it scrolls. */
+  const POP_LINES = 20;
 
   gc.createMenu = function createMenu({ ctx, links, pulls, news, onClose, onOptions, onLinksChanged }) {
     const panel = node('div', 'gc-panel');
@@ -165,25 +165,24 @@ window.__gitchop = window.__gitchop || {};
     pullsList?.addEventListener('scroll', hidePop, { passive: true });
 
     /**
-     * What a fact in the news is made of — the pull requests behind "2 pull requests merged", the
-     * messages behind "23 commits" — under the sentence it sits in, the moment the chip is hovered
-     * or becomes the cursor. Unlike the title above it can be entered: every line is a link, so it
-     * stays while the mouse crosses from the chip into it and goes a beat after the mouse has left
-     * both. One element for the column, filled per chip.
+     * What a fact in the news is made of — the pull requests behind "2 pull requests merged",
+     * every message behind "23 commits" — under the sentence it sits in, the moment the chip is
+     * hovered or becomes the cursor. Unlike the title above it is a place to be: every line is a
+     * link, a long list scrolls inside it, and once the mouse has opened it, it stays for as long
+     * as the mouse is anywhere over the column, so it can be read and scrolled at leisure. It goes
+     * when the mouse leaves the column, when another chip is hovered, or when the list scrolls
+     * under it. One element for the column, filled per chip.
      */
     const newsPop = node('div', 'gc-pop gc-pop--list');
     newsPop.dataset.shown = 'false';
     newsPop.setAttribute('aria-hidden', 'true');
     newsEl?.append(newsPop);
     let newsHover = null;
-    let newsPopHovered = false;
-    let newsPopTimer = null;
-    let newsPopFor = null;
+    let newsMouseIn = false;
+    let newsShown = null;
 
     function hideNewsPop() {
-      clearTimeout(newsPopTimer);
-      newsPopTimer = null;
-      newsPopFor = null;
+      newsShown = null;
       newsPop.dataset.shown = 'false';
       newsPop.setAttribute('aria-hidden', 'true');
     }
@@ -204,63 +203,67 @@ window.__gitchop = window.__gitchop || {};
       return line;
     }
 
+    /** Every line the fact is made of; only a fetch that stopped short ends with a line pointing at GitHub. */
     function fillNewsPop(chip) {
       newsPop.textContent = '';
       for (const item of chip.items ?? []) newsPop.append(popLine(item.title, item.detail, item.url));
-      const rest = (chip.total ?? 0) - (chip.items?.length ?? 0);
-      if (rest > 0) newsPop.append(popLine(`${rest} more on GitHub`, '', chip.url, true));
+      if (chip.more) newsPop.append(popLine('more on GitHub', '', chip.url, true));
     }
 
+    /**
+     * Under the line the chip sits on, the width of the column's text, and no taller than about
+     * twenty lines or the room the column has left beneath — whichever is less — so a long list
+     * scrolls inside it rather than running off the column. Above only when beneath is not enough
+     * and above has more.
+     */
     function newsPopAt(chipEl, chip) {
       if (!chipEl || !chip || (chip.items?.length ?? 0) === 0) {
         hideNewsPop();
         return;
       }
-      clearTimeout(newsPopTimer);
-      newsPopTimer = null;
-      if (newsPopFor !== chipEl) {
+      if (newsShown?.item !== chipEl) {
         fillNewsPop(chip);
-        newsPopFor = chipEl;
+        newsPop.scrollTop = 0;
       }
-      // Under the line the chip sits on, the width of the column's text; above only when the
-      // column has no room left beneath.
+      newsShown = { item: chipEl, chip };
       const box = newsEl.getBoundingClientRect();
       const at = chipEl.getBoundingClientRect();
       const left = 13;
       newsPop.style.left = `${left}px`;
       newsPop.style.width = `${Math.round(box.width - left - 15)}px`;
-      const below = at.bottom - box.top + 6 + newsPop.offsetHeight <= box.height - 6;
+      newsPop.style.maxHeight = '';
+      const natural = newsPop.offsetHeight;
+      const line = newsPop.firstElementChild?.offsetHeight || 25;
+      const roomBelow = box.height - 6 - (at.bottom - box.top + 6);
+      const roomAbove = at.top - box.top - 12;
+      const below = natural <= roomBelow || roomBelow >= roomAbove;
+      newsPop.style.maxHeight = `${Math.round(Math.max(line * 3, Math.min(line * POP_LINES + 10, below ? roomBelow : roomAbove)))}px`;
       newsPop.dataset.below = String(below);
       newsPop.style.top = `${Math.round((below ? at.bottom + 6 : at.top - 6) - box.top)}px`;
       newsPop.dataset.shown = 'true';
       newsPop.setAttribute('aria-hidden', 'false');
     }
 
-    /** A beat before hiding, so the mouse can cross from the chip into the popover. */
-    function lingerNewsPop() {
-      if (newsPopTimer) return;
-      newsPopTimer = setTimeout(() => {
-        newsPopTimer = null;
-        if (!newsHover && !newsPopHovered && region !== 'news') hideNewsPop();
-      }, POP_LINGER);
-    }
-
-    /** The chip under the mouse wins; otherwise the cursor, while it is in the news; a popover being read stays. */
+    /**
+     * The chip under the mouse wins; otherwise the cursor, while it is in the news. Otherwise a
+     * popover the mouse opened stays as long as the mouse is anywhere over the column — that is
+     * what lets a long list be scrolled — and goes when it leaves.
+     */
     function placeNewsPop() {
       if (!newsEl) return;
       const target = newsHover ?? (region === 'news' ? newsItems[newsIndex] : null);
       if (target) newsPopAt(target.item, target.entry.chip);
-      else if (!newsPopHovered) lingerNewsPop();
+      else if (!newsMouseIn) hideNewsPop();
     }
-    newsPop.addEventListener('mouseenter', () => {
-      newsPopHovered = true;
-      clearTimeout(newsPopTimer);
-      newsPopTimer = null;
+    newsEl?.addEventListener('mouseenter', () => {
+      newsMouseIn = true;
     });
-    newsPop.addEventListener('mouseleave', () => {
-      newsPopHovered = false;
+    newsEl?.addEventListener('mouseleave', () => {
+      newsMouseIn = false;
+      newsHover = null;
       placeNewsPop();
     });
+    // The chip it hangs from has moved; where to is not worth working out.
     newsList?.addEventListener('scroll', hideNewsPop, { passive: true });
 
     let current = links.slice();

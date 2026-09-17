@@ -679,12 +679,25 @@ window.__gitchop.CSS = `
 }
 
 /*
- * What a fact is made of: a short list under its sentence, one line per pull request, commit or
- * release, each a link. Unlike the title popover it can be entered, so it takes the pointer —
+ * What a fact is made of: a list under its sentence, one line per pull request, commit or
+ * release, each a link — every one of them, scrolling inside the popover past about twenty (the
+ * script sets the height). Unlike the title popover it can be entered, so it takes the pointer —
  * only while shown, or an invisible sheet would sit over the prose.
  */
 .gc-pop--list {
   padding: 5px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.gc-pop--list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.gc-pop--list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .gc-pop--list[data-shown="true"] {

@@ -116,14 +116,16 @@ window.__gitchop = window.__gitchop || {};
     document.documentElement.append(host);
 
     /**
-     * The page behind must not scroll while the overlay is up, but the lists inside it must. A
-     * wheel turned over a list that has somewhere to go in that direction is left alone; every
-     * other wheel — dead space, a list already at its end — is stopped here, so nothing ever
-     * chains through to the page. The listener sits on the menu layer, the topmost sheet, for two
-     * reasons: at the host the target has already been retargeted to <gitchop-root>, so the list
-     * cannot be told from dead space; and the shadow root itself has no box, so the compositor
-     * sees no blocking handler over the page and scrolls it without asking.
+     * The page behind must not scroll while the overlay is up, but the lists inside it must — the
+     * news popover's list included. A wheel turned over one that has somewhere to go in that
+     * direction is left alone; every other wheel — dead space, a list already at its end — is
+     * stopped here, so nothing ever chains through to the page. The listener sits on the menu
+     * layer, the topmost sheet, for two reasons: at the host the target has already been
+     * retargeted to <gitchop-root>, so a list cannot be told from dead space; and the shadow root
+     * itself has no box, so the compositor sees no blocking handler over the page and scrolls it
+     * without asking.
      */
+    const SCROLLERS = '.gc-list, .gc-pop--list';
     const listCanScroll = (list, event) => {
       const room = list.scrollHeight - list.clientHeight;
       if (room <= 0) return false;
@@ -133,7 +135,7 @@ window.__gitchop = window.__gitchop || {};
       return false;
     };
     const blockScroll = (event) => {
-      const list = event.target?.closest?.('.gc-list');
+      const list = event.target?.closest?.(SCROLLERS);
       if (list && listCanScroll(list, event)) return;
       event.preventDefault();
     };
