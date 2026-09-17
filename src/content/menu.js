@@ -41,8 +41,16 @@ window.__gitchop = window.__gitchop || {};
   /** The one row in a lane that is not a pull request: the tail for whatever GitHub holds beyond what was fetched. */
   const MORE_ROW = 'more';
 
+  /** Skeleton rows standing in for a repository the edition has not reached yet. */
+  const NEWS_SLOTS = 2;
+  /** About how many lines a fact's popover shows before it scrolls. */
+  const POP_LINES = 20;
+  /** The gap between a chip's line and its popover — part of the popover, so crossing it is still being in it. */
+  const POP_BRIDGE = 6;
+  /** How long a popover outlives the mouse leaving its chip — long enough to reach it diagonally. */
+  const POP_LINGER = 120;
 
-  gc.createMenu = function createMenu({ ctx, links, pulls, onClose, onOptions, onLinksChanged }) {
+  gc.createMenu = function createMenu({ ctx, links, pulls, news, onClose, onOptions, onLinksChanged }) {
     const panel = node('div', 'gc-panel');
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
@@ -68,14 +76,36 @@ window.__gitchop = window.__gitchop || {};
     panel.append(head, filter, list, foot);
 
     /**
-     * The panel and the pull requests beside it rise into the cut as one slab, so the stage is what
-     * the chop animates. The column only exists when the background said so — a token that can read
-     * pull requests, and the switch on. Without it the stage is the panel alone, exactly as before.
+     * The panel and the columns beside it rise into the cut as one slab, so the stage is what the
+     * chop animates: the news on the left, the pull requests on the right. Each column only exists
+     * when the background said so — a token that can read pull requests and the switch on; the
+     * news switch on. Without them the stage is the panel alone, exactly as before.
      */
     const stage = node('div', 'gc-stage');
     stage.dataset.region = 'panel';
     stage.dataset.pulls = String(Boolean(pulls?.show));
+    stage.dataset.news = String(Boolean(news?.show) && (news?.repos?.length ?? 0) > 0);
     stage.append(panel);
+
+    // The news column is in the tree whenever the feature is on, and in the layout only while
+    // something is subscribed — so the first subscription made from the menu raises it at once,
+    // and the last unsubscription lets it go, without the menu being reopened.
+    let newsEl = null;
+    let newsList = null;
+    let newsSince = null;
+    if (news?.show) {
+      newsEl = node('aside', 'gc-news');
+      newsEl.setAttribute('aria-label', 'News from the repositories you follow');
+      const newsHead = node('div', 'gc-head');
+      newsSince = node('span', 'gc-since');
+      newsHead.append(node('span', 'gc-title', 'News'), newsSince);
+      // Read with the mouse, never walked with the keys: prose is not a list of rows to be a
+      // cursor in, so the arrows and Tab stay with the links and the pull requests.
+      newsList = node('ul', 'gc-list gc-lanes');
+      newsList.setAttribute('aria-label', 'News');
+      newsEl.append(newsHead, newsList);
+      stage.insertBefore(newsEl, panel);
+    }
 
     let pullsEl = null;
     let pullsList = null;
@@ -138,6 +168,132 @@ window.__gitchop = window.__gitchop || {};
     }
     pullsList?.addEventListener('scroll', hidePop, { passive: true });
 
+    /**
+     * What a fact in the news is made of — the pull requests behind "2 pull requests merged",
+     * every message behind "23 commits" — under the sentence it sits in, the moment the chip is
+     * hovered. Unlike the title above it is a place to be: every line is a link and a long list
+     * scrolls inside it, so it stays while the mouse is over the chip or over the popover itself,
+     * and goes a beat after the mouse has left both. The gap between the chip's line and the card
+     * belongs to the popover — the next line's chips begin in that gap, and without the bridge the
+     * mouse on its way down would open theirs instead. One element for the column, filled per chip.
+     */
+    const newsPop = node('div', 'gc-pop gc-pop--list');
+    newsPop.dataset.shown = 'false';
+    newsPop.setAttribute('aria-hidden', 'true');
+    const newsPopCard = node('div', 'gc-pop-card');
+    newsPop.append(newsPopCard);
+    newsEl?.append(newsPop);
+    let newsHover = null;
+    let newsPopHovered = false;
+    let newsPopTimer = null;
+    let newsShown = null;
+
+    function hideNewsPop() {
+      clearTimeout(newsPopTimer);
+      newsPopTimer = null;
+      if (newsShown) delete newsShown.item.dataset.open;
+      newsShown = null;
+      newsPop.dataset.shown = 'false';
+      newsPop.setAttribute('aria-hidden', 'true');
+    }
+
+    function popLine(title, detail, url, more = false) {
+      const usable = gc.isSafeUrl(url);
+      const line = node(usable ? 'a' : 'div', `gc-pop-item${more ? ' gc-pop-item--more' : ''}`);
+      if (usable) {
+        line.href = url;
+        line.addEventListener('click', (event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
+          cancelSearch();
+          onClose();
+        });
+      }
+      line.append(node('span', 'gc-pop-title', title));
+      if (detail) line.append(node('span', 'gc-pop-detail', detail));
+      return line;
+    }
+
+    /** Every line the fact is made of; only a fetch that stopped short ends with a line pointing at GitHub. */
+    function fillNewsPop(chip) {
+      newsPopCard.textContent = '';
+      for (const item of chip.items ?? []) newsPopCard.append(popLine(item.title, item.detail, item.url));
+      if (chip.more) newsPopCard.append(popLine('more on GitHub', '', chip.url, true));
+    }
+
+    /**
+     * Flush under the line the chip sits on — the bridge is the visible gap — the width of the
+     * column's text, and no taller than about twenty lines or the room the column has left
+     * beneath, whichever is less, so a long list scrolls inside the card rather than running off
+     * the column. Above only when beneath is not enough and above has more.
+     */
+    function newsPopAt(chipEl, chip) {
+      if (!chipEl || !chip || (chip.items?.length ?? 0) === 0) {
+        hideNewsPop();
+        return;
+      }
+      clearTimeout(newsPopTimer);
+      newsPopTimer = null;
+      if (newsShown?.item !== chipEl) {
+        if (newsShown) delete newsShown.item.dataset.open;
+        fillNewsPop(chip);
+        newsPopCard.scrollTop = 0;
+      }
+      newsShown = { item: chipEl, chip };
+      chipEl.dataset.open = 'true';
+      const box = newsEl.getBoundingClientRect();
+      const at = chipEl.getBoundingClientRect();
+      const left = 13;
+      newsPop.style.left = `${left}px`;
+      newsPop.style.width = `${Math.round(box.width - left - 15)}px`;
+      newsPopCard.style.maxHeight = '';
+      const natural = newsPopCard.offsetHeight;
+      const line = newsPopCard.firstElementChild?.offsetHeight || 25;
+      const roomBelow = box.height - 6 - (at.bottom - box.top) - POP_BRIDGE;
+      const roomAbove = at.top - box.top - 6 - POP_BRIDGE;
+      const below = natural <= roomBelow || roomBelow >= roomAbove;
+      newsPopCard.style.maxHeight = `${Math.round(Math.max(line * 3, Math.min(line * POP_LINES + 10, below ? roomBelow : roomAbove)))}px`;
+      newsPop.dataset.below = String(below);
+      newsPop.style.top = `${Math.round((below ? at.bottom : at.top) - box.top)}px`;
+      newsPop.dataset.shown = 'true';
+      newsPop.setAttribute('aria-hidden', 'false');
+    }
+
+    /**
+     * A beat before hiding, so the mouse can cross from the chip into the popover or back; the
+     * hide is deferred at all because the chip's mouseleave fires before the popover's mouseenter,
+     * and a popover hidden in between has no pointer left to be entered.
+     */
+    function lingerNewsPop() {
+      clearTimeout(newsPopTimer);
+      newsPopTimer = setTimeout(() => {
+        newsPopTimer = null;
+        if (!newsHover && !newsPopHovered) hideNewsPop();
+      }, POP_LINGER);
+    }
+
+    /** The chip under the mouse opens its popover; off both the chip and the popover, it goes. */
+    function placeNewsPop() {
+      if (!newsEl) return;
+      if (newsHover) newsPopAt(newsHover.item, newsHover.entry.chip);
+      else if (!newsPopHovered) lingerNewsPop();
+    }
+    newsPop.addEventListener('mouseenter', () => {
+      newsPopHovered = true;
+      clearTimeout(newsPopTimer);
+      newsPopTimer = null;
+    });
+    newsPop.addEventListener('mouseleave', () => {
+      newsPopHovered = false;
+      placeNewsPop();
+    });
+    newsEl?.addEventListener('mouseleave', () => {
+      newsHover = null;
+      newsPopHovered = false;
+      hideNewsPop();
+    });
+    // The chip it hangs from has moved; where to is not worth working out.
+    newsList?.addEventListener('scroll', hideNewsPop, { passive: true });
+
     let current = links.slice();
     let items = [];
     let activeIndex = 0;
@@ -158,12 +314,45 @@ window.__gitchop = window.__gitchop || {};
     let pullsItems = [];
     let pullsIndex = 0;
     let pullsRun = 0;
+    let newsData = news ?? null;
+    let newsRun = 0;
+    let newsBusy = false;
 
-    /** Commands live in the list rather than as buttons, so they are reachable by typing. */
+    function subscribed(repo) {
+      return (newsData?.settings?.repos ?? []).some((seen) => seen.toLowerCase() === String(repo).toLowerCase());
+    }
+
+    /** The subscribe row for one repository — inside it, or as a command when standing on its page. */
+    function subscribeEntry(repo, label) {
+      const on = subscribed(repo);
+      return {
+        usable: true,
+        url: '',
+        icon: on ? '◉' : '◎',
+        label: on ? `Unsubscribe${label ? ` ${label}` : ''} from news` : `Subscribe to news${label ? ` for ${label}` : ''}`,
+        keywords: 'subscribe follow news unsubscribe unfollow digest',
+        reason: '',
+        tip: '',
+        repo: null,
+        run: () => toggleNews(repo, !on),
+      };
+    }
+
+    /**
+     * Commands live in the list rather than as buttons, so they are reachable by typing. The
+     * repository you are standing on rarely has a row of its own — the default links point inside
+     * it, not at it — so subscribing to it is a command here rather than a level down.
+     */
     const ACTIONS = [
       { icon: '＋', label: 'Add this page', keywords: 'add save bookmark current page', run: () => openForm() },
       { icon: '⚙', label: 'Settings', keywords: 'settings manage options edit reorder remove delete sync', run: () => onOptions?.() },
     ];
+
+    function actions() {
+      const list = ACTIONS.slice();
+      if (newsData?.show && ctx.repoFull) list.splice(1, 0, subscribeEntry(ctx.repoFull, ctx.repoFull));
+      return list;
+    }
 
     function linkEntries(query) {
       const needle = query.toLowerCase();
@@ -186,8 +375,9 @@ window.__gitchop = window.__gitchop || {};
 
     function actionEntries(query) {
       const needle = query.toLowerCase();
-      return ACTIONS.filter((action) => !needle || `${action.label} ${action.keywords}`.toLowerCase().includes(needle)).map(
-        (action) => ({
+      return actions()
+        .filter((action) => !needle || `${action.label} ${action.keywords}`.toLowerCase().includes(needle))
+        .map((action) => ({
           usable: true,
           url: '',
           icon: action.icon,
@@ -196,8 +386,7 @@ window.__gitchop = window.__gitchop || {};
           tip: '',
           repo: null,
           run: action.run,
-        }),
-      );
+        }));
     }
 
     function repoEntry(repo) {
@@ -213,8 +402,9 @@ window.__gitchop = window.__gitchop || {};
       };
     }
 
+    /** The places inside a repository, and — with the news on — whether its days land in the column. */
     function drillEntries() {
-      return IN_REPO.map(([icon, label, path]) => ({
+      const entries = IN_REPO.map(([icon, label, path]) => ({
         usable: true,
         url: new URL(`${encodeURIComponent(drill.repo).replace(/%2F/g, '/')}/${path}`, 'https://github.com/').href,
         icon,
@@ -223,6 +413,8 @@ window.__gitchop = window.__gitchop || {};
         tip: '',
         repo: null,
       }));
+      if (newsData?.show) entries.push(subscribeEntry(drill.repo, ''));
+      return entries;
     }
 
     function cancelSearch() {
@@ -266,9 +458,16 @@ window.__gitchop = window.__gitchop || {};
       window.location.assign(entry.url);
     }
 
-    /** The column is in the layout only while the viewport has room for it; the CSS decides. */
+    /** A column is in the layout only while the viewport has room for it; the CSS decides. */
     function pullsVisible() {
       return Boolean(pullsEl) && pullsEl.getClientRects().length > 0;
+    }
+
+    /** The columns the cursor can be in, left to right; the news is not one, being read with the mouse. */
+    function regions() {
+      const order = ['panel'];
+      if (pullsVisible() && pullsItems.length > 0) order.push('pulls');
+      return order;
     }
 
     /**
@@ -298,7 +497,7 @@ window.__gitchop = window.__gitchop || {};
       if (region === 'pulls') pullsItems[pullsIndex]?.item.scrollIntoView({ block: 'nearest' });
       placePop();
 
-      const across = pullsVisible() && pullsItems.length > 0;
+      const across = regions().includes('pulls');
       if (region === 'pulls') hint(['enter', 'open'], ['←', 'back'], [null, 'type to search']);
       else if (drill) hint(['enter', 'open'], ['←', 'back']);
       else if (items[activeIndex]?.entry.repo) hint(['enter', 'open'], ['→', 'inside'], ...(across ? [['tab', 'pull requests']] : []));
@@ -501,6 +700,143 @@ window.__gitchop = window.__gitchop || {};
       return row;
     }
 
+    /**
+     * A fact in the prose. The chip is what the mouse hovers and clicks — the click opens GitHub's
+     * own list of exactly that, cut to the window — and the popover is what it is made of. Same
+     * gate as every other row: nothing becomes a link without passing the scheme check.
+     */
+    function chipEntry(segment) {
+      return {
+        usable: gc.isSafeUrl(segment.chip.url),
+        url: segment.chip.url,
+        kind: segment.chip.kind,
+        text: segment.text,
+        chip: segment.chip,
+      };
+    }
+
+    function newsChip(entry) {
+      const item = node(entry.usable ? 'a' : 'span', 'gc-chip', entry.text);
+      if (entry.usable) item.href = entry.url;
+      item.dataset.kind = entry.kind;
+
+      item.addEventListener('mouseenter', () => {
+        newsHover = { item, entry };
+        placeNewsPop();
+      });
+      item.addEventListener('mouseleave', () => {
+        newsHover = null;
+        placeNewsPop();
+      });
+      item.addEventListener('click', (event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
+        cancelSearch();
+        onClose();
+      });
+      return item;
+    }
+
+    /** One repository's sentences: plain text and chips, in the order the prose puts them. */
+    function proseRow(segments) {
+      const row = node('li', 'gc-prose-row');
+      const prose = node('p', 'gc-prose');
+      for (const segment of segments) {
+        if (segment.chip) prose.append(newsChip(chipEntry(segment)));
+        else prose.append(document.createTextNode(segment.text));
+      }
+      row.append(prose);
+      return row;
+    }
+
+    function repoSection(entry) {
+      const row = node('li', 'gc-section gc-section--lane gc-section--repo');
+      const name = node('span', null, entry.repo);
+      if (entry.private) name.title = 'private repository';
+      row.append(name, node('span', 'gc-rule'));
+      return row;
+    }
+
+    /**
+     * One section per subscribed repository, in the order they were subscribed. Before the edition
+     * reaches a repository it is two skeleton rows; after, its day as a few sentences — or one
+     * quiet line, or the sentence that stands where its day would be. The header says what the
+     * whole column covers, once, so the sections need not repeat it. Whether the column is in the
+     * layout at all follows the list: the first subscription raises it, the last unsubscription
+     * lets it go.
+     */
+    function renderNews() {
+      if (!newsEl) return;
+      newsList.textContent = '';
+      newsHover = null;
+      hideNewsPop();
+
+      const data = newsData ?? {};
+      const repos = data.repos ?? [];
+      stage.dataset.news = String(repos.length > 0);
+      newsSince.textContent = data.sinceLabel ?? '';
+
+      for (const entry of repos) {
+        newsList.append(repoSection(entry));
+        if (entry.prose === null) {
+          skeletons(NEWS_SLOTS, newsList, true);
+          continue;
+        }
+        if (entry.prose.length > 0) {
+          newsList.append(proseRow(entry.prose));
+        } else {
+          const empty = note(entry.error ?? 'nothing new');
+          empty.classList.add('gc-note--pr');
+          if (entry.error) empty.dataset.error = 'true';
+          newsList.append(empty);
+        }
+      }
+    }
+
+    /**
+     * The edition painted instantly; if the background said it was not this morning's, ask for it
+     * and repaint when it lands. A later navigation or subscription owns the result.
+     */
+    async function refreshNews() {
+      if (!newsEl || !newsData?.stale) return;
+      const run = ++newsRun;
+      let next = null;
+      try {
+        const response = await api.runtime.sendMessage({ type: 'gitchop:news:refresh' });
+        if (response?.ok) next = response;
+      } catch {
+        /* keep what is already on screen */
+      }
+      if (run !== newsRun) return;
+      if (next) newsData = next;
+      renderNews();
+    }
+
+    /**
+     * Subscribing from the menu: the list is the background's to change, and its answer is the
+     * whole state, so the drill row flips, the command under Do flips, and the column gains or
+     * loses a section in one repaint. A new repository then has no place in the edition yet, so
+     * the refresh that follows fills it in.
+     */
+    async function toggleNews(repo, subscribe) {
+      if (newsBusy) return;
+      newsBusy = true;
+      const run = ++newsRun;
+      let next = null;
+      try {
+        const response = await api.runtime.sendMessage({ type: subscribe ? 'gitchop:news:subscribe' : 'gitchop:news:unsubscribe', repo });
+        if (response?.ok) next = response;
+      } catch {
+        /* the list stays as it was */
+      } finally {
+        newsBusy = false;
+      }
+      if (run !== newsRun || !next) return;
+      newsData = next;
+      renderNews();
+      render();
+      refreshNews();
+    }
+
     function laneSection(lane) {
       const row = node('li', 'gc-section gc-section--lane');
       row.append(node('span', null, lane.title), node('span', 'gc-rule'));
@@ -589,6 +925,14 @@ window.__gitchop = window.__gitchop || {};
       paint();
     }
 
+    /** Tab walks the columns left to right and wraps; Shift+Tab walks back. */
+    function cycle(delta) {
+      const order = regions();
+      const next = order[(order.indexOf(region) + delta + order.length) % order.length];
+      if (next === 'pulls') toPulls();
+      else toPanel();
+    }
+
     function movePulls(delta) {
       if (pullsItems.length === 0) return;
       pullsIndex = (pullsIndex + delta + pullsItems.length) % pullsItems.length;
@@ -596,32 +940,37 @@ window.__gitchop = window.__gitchop || {};
     }
 
     /**
-     * Keys while the pull requests have the cursor. Anything printable hands the key to the filter:
-     * focus moves during keydown, so the character itself arrives there — you are never stuck in
-     * the column, you just start typing and you are searching.
+     * Keys while a side column has the cursor. The arrow that points at the panel comes back to
+     * it; anything printable hands the key to the filter: focus moves during keydown, so the
+     * character itself arrives there — you are never stuck in a column, you just start typing and
+     * you are searching.
      */
-    function pullsKeys(event) {
+    function sideKeys(event, { back, move, current }) {
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        movePulls(1);
+        move(1);
         return;
       }
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        movePulls(-1);
+        move(-1);
         return;
       }
-      if (event.key === 'ArrowLeft') {
+      if (event.key === back) {
         event.preventDefault();
         toPanel();
         return;
       }
       if (event.key === 'Enter') {
         event.preventDefault();
-        open(pullsItems[pullsIndex]?.entry, event.metaKey || event.ctrlKey || event.shiftKey);
+        open(current(), event.metaKey || event.ctrlKey || event.shiftKey);
         return;
       }
       if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) toPanel();
+    }
+
+    function pullsKeys(event) {
+      sideKeys(event, { back: 'ArrowLeft', move: movePulls, current: () => pullsItems[pullsIndex]?.entry });
     }
 
     function scheduleSearch() {
@@ -798,17 +1147,16 @@ window.__gitchop = window.__gitchop || {};
         event.preventDefault();
         event.stopPropagation();
         if (form) closeForm();
-        else if (region === 'pulls') toPanel();
+        else if (region !== 'panel') toPanel();
         else if (!leaveDrill()) onClose();
         return;
       }
-      // With the pull requests on screen, Tab crosses the gutter and back; without it, it wraps inside
-      // the panel as it always has.
+      // With a column on screen, Tab crosses the gutter — left to right, wrapping at the end, and
+      // Shift+Tab back; without one, it wraps inside the panel as it always has.
       if (event.key === 'Tab') {
-        if (!form && pullsVisible() && pullsItems.length > 0) {
+        if (!form && regions().length > 1) {
           event.preventDefault();
-          if (region === 'panel') toPulls();
-          else toPanel();
+          cycle(event.shiftKey ? -1 : 1);
         } else {
           trapTab(event);
         }
@@ -868,12 +1216,20 @@ window.__gitchop = window.__gitchop || {};
 
     render();
     renderPulls();
+    renderNews();
     refreshPulls();
+    refreshNews();
 
     return {
       element: stage,
+      /**
+       * Called once the stage is in the page, which is the first moment the columns have a layout
+       * to be visible in — so the strip is painted again here, or a fresh snapshot with nothing to
+       * refresh would leave it not mentioning them until the cursor moved.
+       */
       focus() {
         filter.focus();
+        paint();
       },
     };
   };

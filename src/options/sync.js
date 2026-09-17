@@ -109,7 +109,7 @@ function recipe() {
 
   const steps = element('ol', 'steps');
   const items = [
-    ['Scopes', 'repo and gist. repo is what lists private repositories and reads the pull requests beside the menu; gist is only for the backup, so leave it off if you do not want that.'],
+    ['Scopes', 'repo and gist. repo is what lists private repositories, reads the pull requests beside the menu and the news from private repositories you subscribe to; gist is only for the backup, so leave it off if you do not want that.'],
     ['Expiration', 'set one. When it lapses, search stops and this page reports the rejection — nothing is lost, and it beats a credential with no end date.'],
     ['Nothing else', 'no other scope is needed or used.'],
   ];
@@ -139,9 +139,9 @@ function noToken(error) {
     element(
       'p',
       'note',
-      'One token unlocks three things: finding private repositories, which GitHub’s search will not ' +
-        'return; the pull requests waiting on you, beside the menu; and backing your links ' +
-        'up to a secret gist.',
+      'One token unlocks four things: finding private repositories, which GitHub’s search will not ' +
+        'return; the pull requests waiting on you, beside the menu; news from private repositories ' +
+        'you subscribe to — public ones need no token; and backing your links up to a secret gist.',
     ),
   );
   wrap.append(recipe());
@@ -184,9 +184,10 @@ function noToken(error) {
       'p',
       'note',
       'Tokens are stored outside synced storage, obfuscated rather than left as readable text, only ' +
-        'ever sent to api.github.com, and never handed to a web page. Each is used for four calls and ' +
+        'ever sent to api.github.com, and never handed to a web page. Each is used for five calls and ' +
         'no others: who the account is, which repositories it can see, which open pull requests are ' +
-        'yours or want your review, and reading and writing the one gist. Obfuscation is not ' +
+        'yours or want your review, what happened lately in the repositories you subscribe to, and ' +
+        'reading and writing the one gist. Obfuscation is not ' +
         'encryption — anyone with access to this profile can still recover ' +
         'them — but a token no longer sits in the profile as searchable text.',
     ),

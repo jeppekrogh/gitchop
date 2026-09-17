@@ -116,19 +116,31 @@ window.__gitchop = window.__gitchop || {};
     document.documentElement.append(host);
 
     /**
-     * Wheel and touch scrolling must not reach the page behind the overlay — except inside a list
-     * that has something to scroll, which scrolls itself; overscroll-behavior: contain on the lists
-     * keeps one that has hit its edge from handing the rest of the gesture to the page. The listener
-     * sits on the shadow root rather than the host: a closed shadow root retargets events for
-     * listeners outside it, so from the host every wheel looks like it landed on the host itself.
+     * The page behind must not scroll while the overlay is up, but the lists inside it must — the
+     * news popover's list included. A wheel turned over one that has somewhere to go in that
+     * direction is left alone; every other wheel — dead space, a list already at its end — is
+     * stopped here, so nothing ever chains through to the page. The listener sits on the menu
+     * layer, the topmost sheet, for two reasons: at the host the target has already been
+     * retargeted to <gitchop-root>, so a list cannot be told from dead space; and the shadow root
+     * itself has no box, so the compositor sees no blocking handler over the page and scrolls it
+     * without asking.
      */
+    const SCROLLERS = '.gc-list, .gc-pop-card';
+    const listCanScroll = (list, event) => {
+      const room = list.scrollHeight - list.clientHeight;
+      if (room <= 0) return false;
+      if (event.type !== 'wheel') return true;
+      if (event.deltaY < 0) return list.scrollTop > 0;
+      if (event.deltaY > 0) return list.scrollTop < room - 0.5;
+      return false;
+    };
     const blockScroll = (event) => {
-      const list = event.target?.closest?.('.gc-list');
-      if (list && list.scrollHeight > list.clientHeight) return;
+      const list = event.target?.closest?.(SCROLLERS);
+      if (list && listCanScroll(list, event)) return;
       event.preventDefault();
     };
-    shadow.addEventListener('wheel', blockScroll, { passive: false });
-    shadow.addEventListener('touchmove', blockScroll, { passive: false });
+    menuLayer.addEventListener('wheel', blockScroll, { passive: false });
+    menuLayer.addEventListener('touchmove', blockScroll, { passive: false });
 
     /**
      * Keyboard events are composed, so they escape the shadow root and reach GitHub's own
@@ -346,8 +358,8 @@ window.__gitchop = window.__gitchop || {};
       },
 
       destroy() {
-        shadow.removeEventListener('wheel', blockScroll);
-        shadow.removeEventListener('touchmove', blockScroll);
+        menuLayer.removeEventListener('wheel', blockScroll);
+        menuLayer.removeEventListener('touchmove', blockScroll);
         for (const type of ['keydown', 'keypress', 'keyup']) {
           host.removeEventListener(type, keepKeys);
         }

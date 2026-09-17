@@ -125,8 +125,10 @@ window.__gitchop.CSS = `
 }
 
 /*
- * The stage is the slab the chop raises: the panel alone, or the panel with the pull requests beside it.
- * Both columns stretch to the same height, so their bottoms align whatever is in them.
+ * The stage is the slab the chop raises: the panel alone, or the panel with the news on its left
+ * and the pull requests on its right. Every column stretches to the same height, so their bottoms
+ * align whatever is in them. The widths are what the columns want; a viewport just short of them
+ * squeezes all three a little before one has to go.
  */
 .gc-stage {
   display: flex;
@@ -140,8 +142,17 @@ window.__gitchop.CSS = `
   width: min(916px, 100%);
 }
 
+.gc-stage[data-news="true"] {
+  width: min(876px, 100%);
+}
+
+.gc-stage[data-news="true"][data-pulls="true"] {
+  width: min(1332px, 100%);
+}
+
 .gc-panel,
-.gc-pulls {
+.gc-pulls,
+.gc-news {
   position: relative;
   min-width: 0;
   display: flex;
@@ -160,19 +171,44 @@ window.__gitchop.CSS = `
   flex: 0 1 440px;
 }
 
-/* Below this there is no room beside the panel; the menu is exactly what it was. */
-@media (max-width: 979px) {
-  .gc-pulls {
+/* In the tree whenever the news is on; in the layout only while something is subscribed. */
+.gc-news {
+  flex: 0 1 400px;
+  display: none;
+}
+
+.gc-stage[data-news="true"] .gc-news {
+  display: flex;
+}
+
+/* Three columns need this much; below it the news steps out first, being the newer arrival. */
+@media (max-width: 1279px) {
+  .gc-stage[data-pulls="true"] .gc-news {
     display: none;
   }
 
-  .gc-stage[data-pulls="true"] {
+  .gc-stage[data-news="true"][data-pulls="true"] {
+    width: min(916px, 100%);
+  }
+}
+
+/* Below this there is no room beside the panel at all; the menu is exactly what it was. */
+@media (max-width: 979px) {
+  .gc-pulls,
+  .gc-stage[data-news="true"] .gc-news {
+    display: none;
+  }
+
+  .gc-stage[data-pulls="true"],
+  .gc-stage[data-news="true"],
+  .gc-stage[data-news="true"][data-pulls="true"] {
     width: min(460px, 100%);
   }
 }
 
 .gc-panel::before,
-.gc-pulls::before {
+.gc-pulls::before,
+.gc-news::before {
   content: "";
   position: absolute;
   top: -1px;
@@ -264,14 +300,14 @@ window.__gitchop.CSS = `
   cursor: default;
 }
 
-.gc-stage[data-region="pulls"] .gc-panel .gc-item[data-active="true"],
-.gc-stage[data-region="panel"] .gc-pulls .gc-item[data-active="true"] {
+/* A column without the cursor keeps its place marked, but quietly. */
+.gc-stage:not([data-region="panel"]) .gc-panel .gc-item[data-active="true"],
+.gc-stage:not([data-region="pulls"]) .gc-pulls .gc-item[data-active="true"] {
   background: transparent;
   border-left-color: rgba(255, 255, 255, 0.28);
 }
 
-.gc-stage[data-region="pulls"] .gc-panel .gc-item[data-active="true"] .gc-tail,
-.gc-stage[data-region="panel"] .gc-pulls .gc-item[data-active="true"] .gc-tail {
+.gc-stage:not([data-region="panel"]) .gc-panel .gc-item[data-active="true"] .gc-tail {
   opacity: 0;
 }
 
@@ -576,5 +612,137 @@ window.__gitchop.CSS = `
   min-height: var(--gc-pr-row);
   display: flex;
   align-items: center;
+}
+
+.gc-note[data-error="true"] {
+  color: #ffb3a8;
+}
+
+/*
+ * News: one section per repository, rows of a glyph, a title and a tail word. The header carries
+ * the one fact the whole column shares — what it covers — where the panel's head has its title.
+ */
+.gc-since {
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 400 10px/1 var(--gc-mono);
+  letter-spacing: 0.03em;
+  color: var(--gc-dim);
+}
+
+.gc-section--repo > span:first-child {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * One repository is a few sentences, and every fact in them is a chip: the thing the mouse hovers
+ * and clicks. The words between are dimmer, so the facts read first.
+ */
+.gc-prose-row {
+  padding: 2px 15px 9px 13px;
+}
+
+.gc-prose {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--gc-heading);
+}
+
+.gc-chip {
+  color: var(--gc-text);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+  padding: 1px 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Lit while hovered, and while its popover is the one that is up. */
+.gc-chip:hover,
+.gc-chip[data-open="true"] {
+  background: rgba(255, 255, 255, 0.07);
+  border-bottom-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07);
+}
+
+/*
+ * What a fact is made of: a list under its sentence, one line per pull request, commit or
+ * release, each a link — every one of them, scrolling inside the card past about twenty (the
+ * script sets the height). The outer element is the bridge: transparent, sitting flush under the
+ * chip's line, its padding the visible gap, so the mouse crossing the gap is still in the popover
+ * and not on the next line's chips. It takes the pointer only while shown, or an invisible sheet
+ * would sit over the prose.
+ */
+.gc-pop--list {
+  padding: 6px 0 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.gc-pop--list[data-below="false"] {
+  padding: 0 0 6px;
+}
+
+.gc-pop--list[data-shown="true"] {
+  pointer-events: auto;
+}
+
+.gc-pop-card {
+  padding: 5px 0;
+  background: #14171b;
+  border: 1px solid var(--gc-line);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.85);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.gc-pop-card::-webkit-scrollbar {
+  width: 8px;
+}
+
+.gc-pop-card::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.gc-pop-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 10px;
+  color: var(--gc-text);
+  text-decoration: none;
+}
+
+a.gc-pop-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.gc-pop-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.gc-pop-detail {
+  font: 400 10px/1 var(--gc-mono);
+  color: var(--gc-dim);
+  white-space: nowrap;
+}
+
+.gc-pop-item--more .gc-pop-title {
+  font: 400 11px/1.2 var(--gc-mono);
+  color: var(--gc-dim);
 }
 `;

@@ -226,7 +226,7 @@ kbd {
   max-width: 60ch;
 }
 
-.tokens {
+dl.tokens {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 6px 16px;
