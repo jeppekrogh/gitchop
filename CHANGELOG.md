@@ -9,14 +9,15 @@ it from.
   the left of the menu with what happened in it, told in a few sentences — *Released v3.1.0.
   23 commits to develop by tuj, jekuno and 2 more. 2 pull requests merged, 1 opened and 1 closed
   without merging. 2 issues opened and 1 closed.* — most newsworthy first, and one quiet line when
-  nothing did. Every fact in the prose is a chip: hover it, or walk to it with <kbd>↑</kbd><kbd>↓</kbd>,
-  and what it is made of unfolds beneath the sentence — the pull requests behind the count, every
+  nothing did. Every fact in the prose is a chip: hover it, and what it is made of unfolds
+  beneath the sentence — the pull requests behind the count, every
   commit of the day with its message and who made it, the releases by name — each line a link.
-  Nothing is cut: the list scrolls inside the popover past about twenty lines, and once the mouse
-  has opened it, it stays for as long as the mouse is anywhere over the column, so a busy day can
-  be read and scrolled without leaving the page. Only a fetch that stopped before the day did — a
+  Nothing is cut: the list scrolls inside the popover past about twenty lines, and it stays while
+  the mouse is over the chip or the popover itself — the gap between them belongs to the popover,
+  since the next line's chips begin in it — so a busy day can be read and scrolled without leaving
+  the page. Only a fetch that stopped before the day did — a
   fourth hundred commits, a fifty-first pull request — ends the list with a line pointing at
-  GitHub. <kbd>↵</kbd> on the chip opens GitHub's own list of exactly that, cut to the window. It
+  GitHub. Clicking the chip itself opens GitHub's own list of exactly that, cut to the window. It
   is a morning paper, not a feed: the edition is made up
   once a day at the hour set in Settings (08:00 to begin with), covers everything since the previous
   edition — yesterday at the same hour, or back to Friday's on a Monday when the browser was shut
@@ -29,13 +30,12 @@ it from.
   have no row for the repository itself. The first subscription raises the column at once and the
   last lets it go, with the menu still open. The list travels with the profile in sync storage,
   capped at thirty.
-- <kbd>←</kbd> from the search — with the caret at the start, which with nothing typed is at once —
-  crosses into the news; <kbd>→</kbd> comes back; <kbd>Tab</kbd> now walks news, links, pull
-  requests and round again, <kbd>Shift</kbd>+<kbd>Tab</kbd> the other way. Typing anything in
-  either column drops back into the search as before. The strip under the panel mentions both
-  columns, and drops <kbd>esc</kbd> when both are there to make room. Three columns need about
-  1280 px, where all three squeeze a little; below that the news steps out first, being the newer
-  arrival, and below 980 px the menu is what it was.
+- The column is read with the mouse and never takes the keyboard. Walking the chips inside the
+  sentences with the arrows was tried and dropped: prose is not a list of rows to be a cursor in.
+  So <kbd>Tab</kbd>, <kbd>←</kbd> and <kbd>→</kbd> stay with the links and the pull requests
+  exactly as before, and the strip under the panel does not mention the news. Three columns need
+  about 1280 px, where all three squeeze a little; below that the news steps out first, being the
+  newer arrival, and below 980 px the menu is what it was.
 - Each repository costs five plain REST requests a day — the repository itself, the commits on its
   default branch inside the window (a page more for every hundred beyond the first, up to three),
   the pull requests and issues that moved lately, the recent releases — so public repositories

@@ -45,6 +45,10 @@ window.__gitchop = window.__gitchop || {};
   const NEWS_SLOTS = 2;
   /** About how many lines a fact's popover shows before it scrolls. */
   const POP_LINES = 20;
+  /** The gap between a chip's line and its popover — part of the popover, so crossing it is still being in it. */
+  const POP_BRIDGE = 6;
+  /** How long a popover outlives the mouse leaving its chip — long enough to reach it diagonally. */
+  const POP_LINGER = 120;
 
   gc.createMenu = function createMenu({ ctx, links, pulls, news, onClose, onOptions, onLinksChanged }) {
     const panel = node('div', 'gc-panel');
@@ -95,10 +99,10 @@ window.__gitchop = window.__gitchop || {};
       const newsHead = node('div', 'gc-head');
       newsSince = node('span', 'gc-since');
       newsHead.append(node('span', 'gc-title', 'News'), newsSince);
+      // Read with the mouse, never walked with the keys: prose is not a list of rows to be a
+      // cursor in, so the arrows and Tab stay with the links and the pull requests.
       newsList = node('ul', 'gc-list gc-lanes');
-      newsList.setAttribute('role', 'listbox');
       newsList.setAttribute('aria-label', 'News');
-      newsList.tabIndex = -1;
       newsEl.append(newsHead, newsList);
       stage.insertBefore(newsEl, panel);
     }
@@ -167,21 +171,27 @@ window.__gitchop = window.__gitchop || {};
     /**
      * What a fact in the news is made of — the pull requests behind "2 pull requests merged",
      * every message behind "23 commits" — under the sentence it sits in, the moment the chip is
-     * hovered or becomes the cursor. Unlike the title above it is a place to be: every line is a
-     * link, a long list scrolls inside it, and once the mouse has opened it, it stays for as long
-     * as the mouse is anywhere over the column, so it can be read and scrolled at leisure. It goes
-     * when the mouse leaves the column, when another chip is hovered, or when the list scrolls
-     * under it. One element for the column, filled per chip.
+     * hovered. Unlike the title above it is a place to be: every line is a link and a long list
+     * scrolls inside it, so it stays while the mouse is over the chip or over the popover itself,
+     * and goes a beat after the mouse has left both. The gap between the chip's line and the card
+     * belongs to the popover — the next line's chips begin in that gap, and without the bridge the
+     * mouse on its way down would open theirs instead. One element for the column, filled per chip.
      */
     const newsPop = node('div', 'gc-pop gc-pop--list');
     newsPop.dataset.shown = 'false';
     newsPop.setAttribute('aria-hidden', 'true');
+    const newsPopCard = node('div', 'gc-pop-card');
+    newsPop.append(newsPopCard);
     newsEl?.append(newsPop);
     let newsHover = null;
-    let newsMouseIn = false;
+    let newsPopHovered = false;
+    let newsPopTimer = null;
     let newsShown = null;
 
     function hideNewsPop() {
+      clearTimeout(newsPopTimer);
+      newsPopTimer = null;
+      if (newsShown) delete newsShown.item.dataset.open;
       newsShown = null;
       newsPop.dataset.shown = 'false';
       newsPop.setAttribute('aria-hidden', 'true');
@@ -205,63 +215,81 @@ window.__gitchop = window.__gitchop || {};
 
     /** Every line the fact is made of; only a fetch that stopped short ends with a line pointing at GitHub. */
     function fillNewsPop(chip) {
-      newsPop.textContent = '';
-      for (const item of chip.items ?? []) newsPop.append(popLine(item.title, item.detail, item.url));
-      if (chip.more) newsPop.append(popLine('more on GitHub', '', chip.url, true));
+      newsPopCard.textContent = '';
+      for (const item of chip.items ?? []) newsPopCard.append(popLine(item.title, item.detail, item.url));
+      if (chip.more) newsPopCard.append(popLine('more on GitHub', '', chip.url, true));
     }
 
     /**
-     * Under the line the chip sits on, the width of the column's text, and no taller than about
-     * twenty lines or the room the column has left beneath — whichever is less — so a long list
-     * scrolls inside it rather than running off the column. Above only when beneath is not enough
-     * and above has more.
+     * Flush under the line the chip sits on — the bridge is the visible gap — the width of the
+     * column's text, and no taller than about twenty lines or the room the column has left
+     * beneath, whichever is less, so a long list scrolls inside the card rather than running off
+     * the column. Above only when beneath is not enough and above has more.
      */
     function newsPopAt(chipEl, chip) {
       if (!chipEl || !chip || (chip.items?.length ?? 0) === 0) {
         hideNewsPop();
         return;
       }
+      clearTimeout(newsPopTimer);
+      newsPopTimer = null;
       if (newsShown?.item !== chipEl) {
+        if (newsShown) delete newsShown.item.dataset.open;
         fillNewsPop(chip);
-        newsPop.scrollTop = 0;
+        newsPopCard.scrollTop = 0;
       }
       newsShown = { item: chipEl, chip };
+      chipEl.dataset.open = 'true';
       const box = newsEl.getBoundingClientRect();
       const at = chipEl.getBoundingClientRect();
       const left = 13;
       newsPop.style.left = `${left}px`;
       newsPop.style.width = `${Math.round(box.width - left - 15)}px`;
-      newsPop.style.maxHeight = '';
-      const natural = newsPop.offsetHeight;
-      const line = newsPop.firstElementChild?.offsetHeight || 25;
-      const roomBelow = box.height - 6 - (at.bottom - box.top + 6);
-      const roomAbove = at.top - box.top - 12;
+      newsPopCard.style.maxHeight = '';
+      const natural = newsPopCard.offsetHeight;
+      const line = newsPopCard.firstElementChild?.offsetHeight || 25;
+      const roomBelow = box.height - 6 - (at.bottom - box.top) - POP_BRIDGE;
+      const roomAbove = at.top - box.top - 6 - POP_BRIDGE;
       const below = natural <= roomBelow || roomBelow >= roomAbove;
-      newsPop.style.maxHeight = `${Math.round(Math.max(line * 3, Math.min(line * POP_LINES + 10, below ? roomBelow : roomAbove)))}px`;
+      newsPopCard.style.maxHeight = `${Math.round(Math.max(line * 3, Math.min(line * POP_LINES + 10, below ? roomBelow : roomAbove)))}px`;
       newsPop.dataset.below = String(below);
-      newsPop.style.top = `${Math.round((below ? at.bottom + 6 : at.top - 6) - box.top)}px`;
+      newsPop.style.top = `${Math.round((below ? at.bottom : at.top) - box.top)}px`;
       newsPop.dataset.shown = 'true';
       newsPop.setAttribute('aria-hidden', 'false');
     }
 
     /**
-     * The chip under the mouse wins; otherwise the cursor, while it is in the news. Otherwise a
-     * popover the mouse opened stays as long as the mouse is anywhere over the column — that is
-     * what lets a long list be scrolled — and goes when it leaves.
+     * A beat before hiding, so the mouse can cross from the chip into the popover or back; the
+     * hide is deferred at all because the chip's mouseleave fires before the popover's mouseenter,
+     * and a popover hidden in between has no pointer left to be entered.
      */
+    function lingerNewsPop() {
+      clearTimeout(newsPopTimer);
+      newsPopTimer = setTimeout(() => {
+        newsPopTimer = null;
+        if (!newsHover && !newsPopHovered) hideNewsPop();
+      }, POP_LINGER);
+    }
+
+    /** The chip under the mouse opens its popover; off both the chip and the popover, it goes. */
     function placeNewsPop() {
       if (!newsEl) return;
-      const target = newsHover ?? (region === 'news' ? newsItems[newsIndex] : null);
-      if (target) newsPopAt(target.item, target.entry.chip);
-      else if (!newsMouseIn) hideNewsPop();
+      if (newsHover) newsPopAt(newsHover.item, newsHover.entry.chip);
+      else if (!newsPopHovered) lingerNewsPop();
     }
-    newsEl?.addEventListener('mouseenter', () => {
-      newsMouseIn = true;
+    newsPop.addEventListener('mouseenter', () => {
+      newsPopHovered = true;
+      clearTimeout(newsPopTimer);
+      newsPopTimer = null;
+    });
+    newsPop.addEventListener('mouseleave', () => {
+      newsPopHovered = false;
+      placeNewsPop();
     });
     newsEl?.addEventListener('mouseleave', () => {
-      newsMouseIn = false;
       newsHover = null;
-      placeNewsPop();
+      newsPopHovered = false;
+      hideNewsPop();
     });
     // The chip it hangs from has moved; where to is not worth working out.
     newsList?.addEventListener('scroll', hideNewsPop, { passive: true });
@@ -287,8 +315,6 @@ window.__gitchop = window.__gitchop || {};
     let pullsIndex = 0;
     let pullsRun = 0;
     let newsData = news ?? null;
-    let newsItems = [];
-    let newsIndex = 0;
     let newsRun = 0;
     let newsBusy = false;
 
@@ -437,15 +463,9 @@ window.__gitchop = window.__gitchop || {};
       return Boolean(pullsEl) && pullsEl.getClientRects().length > 0;
     }
 
-    function newsVisible() {
-      return Boolean(newsEl) && newsEl.getClientRects().length > 0;
-    }
-
-    /** The columns the cursor can be in, left to right: only a side column with rows in it counts. */
+    /** The columns the cursor can be in, left to right; the news is not one, being read with the mouse. */
     function regions() {
-      const order = [];
-      if (newsVisible() && newsItems.length > 0) order.push('news');
-      order.push('panel');
+      const order = ['panel'];
       if (pullsVisible() && pullsItems.length > 0) order.push('pulls');
       return order;
     }
@@ -475,27 +495,13 @@ window.__gitchop = window.__gitchop || {};
         item.dataset.active = String(index === pullsIndex);
       });
       if (region === 'pulls') pullsItems[pullsIndex]?.item.scrollIntoView({ block: 'nearest' });
-
-      newsItems.forEach(({ item }, index) => {
-        item.dataset.active = String(index === newsIndex);
-      });
-      if (region === 'news') newsItems[newsIndex]?.item.scrollIntoView({ block: 'nearest' });
       placePop();
-      placeNewsPop();
 
-      const order = regions();
-      const across = order.includes('pulls');
-      const left = order.includes('news');
-      // With a column on either side the strip is full; esc is the one key nobody needs telling.
-      const close = left && across ? [] : [['esc', 'close']];
+      const across = regions().includes('pulls');
       if (region === 'pulls') hint(['enter', 'open'], ['←', 'back'], [null, 'type to search']);
-      else if (region === 'news') hint(['enter', 'open'], ['→', 'back'], [null, 'type to search']);
       else if (drill) hint(['enter', 'open'], ['←', 'back']);
-      else if (items[activeIndex]?.entry.repo) {
-        hint(['enter', 'open'], ['→', 'inside'], ...(left ? [['←', 'news']] : []), ...(across ? [['tab', 'pull requests']] : []));
-      } else {
-        hint(['enter', 'open'], ...(left ? [['←', 'news']] : []), ...(across ? [['→', 'pull requests']] : []), ...close);
-      }
+      else if (items[activeIndex]?.entry.repo) hint(['enter', 'open'], ['→', 'inside'], ...(across ? [['tab', 'pull requests']] : []));
+      else hint(['enter', 'open'], ...(across ? [['→', 'pull requests']] : []), ['esc', 'close']);
     }
 
     function section(title) {
@@ -694,7 +700,7 @@ window.__gitchop = window.__gitchop || {};
     }
 
     /**
-     * A fact in the prose. The chip is what the cursor lands on and what Enter opens — GitHub's
+     * A fact in the prose. The chip is what the mouse hovers and clicks — the click opens GitHub's
      * own list of exactly that, cut to the window — and the popover is what it is made of. Same
      * gate as every other row: nothing becomes a link without passing the scheme check.
      */
@@ -713,13 +719,6 @@ window.__gitchop = window.__gitchop || {};
       if (entry.usable) item.href = entry.url;
       item.dataset.kind = entry.kind;
 
-      const index = newsItems.length;
-      const activate = () => {
-        if (newsIndex === index) return;
-        newsIndex = index;
-        paint();
-      };
-      item.addEventListener('mousemove', activate);
       item.addEventListener('mouseenter', () => {
         newsHover = { item, entry };
         placeNewsPop();
@@ -733,8 +732,6 @@ window.__gitchop = window.__gitchop || {};
         cancelSearch();
         onClose();
       });
-
-      newsItems.push({ entry, item });
       return item;
     }
 
@@ -769,7 +766,6 @@ window.__gitchop = window.__gitchop || {};
     function renderNews() {
       if (!newsEl) return;
       newsList.textContent = '';
-      newsItems = [];
       newsHover = null;
       hideNewsPop();
 
@@ -793,9 +789,6 @@ window.__gitchop = window.__gitchop || {};
           newsList.append(empty);
         }
       }
-
-      newsIndex = Math.max(0, Math.min(newsIndex, newsItems.length - 1));
-      paint();
     }
 
     /**
@@ -924,14 +917,6 @@ window.__gitchop = window.__gitchop || {};
       paint();
     }
 
-    function toNews() {
-      if (!newsVisible() || newsItems.length === 0) return;
-      region = 'news';
-      stage.dataset.region = region;
-      newsList.focus({ preventScroll: true });
-      paint();
-    }
-
     function toPanel() {
       region = 'panel';
       stage.dataset.region = region;
@@ -943,20 +928,13 @@ window.__gitchop = window.__gitchop || {};
     function cycle(delta) {
       const order = regions();
       const next = order[(order.indexOf(region) + delta + order.length) % order.length];
-      if (next === 'news') toNews();
-      else if (next === 'pulls') toPulls();
+      if (next === 'pulls') toPulls();
       else toPanel();
     }
 
     function movePulls(delta) {
       if (pullsItems.length === 0) return;
       pullsIndex = (pullsIndex + delta + pullsItems.length) % pullsItems.length;
-      paint();
-    }
-
-    function moveNews(delta) {
-      if (newsItems.length === 0) return;
-      newsIndex = (newsIndex + delta + newsItems.length) % newsItems.length;
       paint();
     }
 
@@ -992,10 +970,6 @@ window.__gitchop = window.__gitchop || {};
 
     function pullsKeys(event) {
       sideKeys(event, { back: 'ArrowLeft', move: movePulls, current: () => pullsItems[pullsIndex]?.entry });
-    }
-
-    function newsKeys(event) {
-      sideKeys(event, { back: 'ArrowRight', move: moveNews, current: () => newsItems[newsIndex]?.entry });
     }
 
     function scheduleSearch() {
@@ -1192,10 +1166,6 @@ window.__gitchop = window.__gitchop || {};
         pullsKeys(event);
         return;
       }
-      if (region === 'news') {
-        newsKeys(event);
-        return;
-      }
       settle();
 
       // Right only takes over once the caret has nowhere left to go, so it still moves the
@@ -1217,15 +1187,6 @@ window.__gitchop = window.__gitchop || {};
       if (event.key === 'ArrowLeft' && drill) {
         event.preventDefault();
         leaveDrill();
-        return;
-      }
-      // Left, likewise, only once the caret is at the start — with nothing typed, that is at once —
-      // and crosses to the news; Right in that column comes back.
-      if (event.key === 'ArrowLeft' && !drill) {
-        const atStart = filter.selectionStart === 0 && filter.selectionEnd === 0;
-        if (!atStart || !newsVisible() || newsItems.length === 0) return;
-        event.preventDefault();
-        toNews();
         return;
       }
 

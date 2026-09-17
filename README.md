@@ -22,10 +22,10 @@ install, unless site access has been narrowed to *on click*.
 | type | Filter your links; 3 characters or more also searches repositories |
 | <kbd>↑</kbd> <kbd>↓</kbd> | Move |
 | <kbd>→</kbd> | Go inside a repository — its pull requests, its issues, or subscribing to its news; on any other row, across to the pull requests |
-| <kbd>←</kbd> | Back out of a repository; from the search, across to the news; from either column, back to the menu |
+| <kbd>←</kbd> | Back out of a repository, or back to the menu from the pull requests |
 | <kbd>↵</kbd> | Open |
 | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>↵</kbd> | Open in a new tab |
-| <kbd>Tab</kbd> | Across the columns, left to right and round again, from any row |
+| <kbd>Tab</kbd> | Across to the pull requests and back, from any row |
 | <kbd>Esc</kbd> | Close |
 
 `Add this page` and `Settings` are rows in the list; type `add` or `settings` to reach them. On a
@@ -100,12 +100,12 @@ narrower than about 980 px have no room for it, and the menu is what it always w
 Subscribe to a repository and a column rises on the other side of the menu with what happened in
 it, told in a few sentences: *Released v3.1.0. 23 commits to develop by tuj, jekuno and 2 more.
 2 pull requests merged, 1 opened and 1 closed without merging. 2 issues opened and 1 closed.* A
-quiet day says *nothing new*. Every fact in the prose is a chip: hover it, or walk to it with
-↑ ↓, and what it is made of unfolds beneath the sentence — the pull requests behind the count,
-every commit of the day with its message and author, the releases by name — each a link. The
-list scrolls inside the popover past about twenty lines, and once the mouse has opened it, it
-stays for as long as the mouse is anywhere over the column, so a busy day can be read without
-leaving the page. ↵ on the chip opens GitHub's own list of exactly that, cut to the window.
+quiet day says *nothing new*. Every fact in the prose is a chip: hover it, and what it is made of
+unfolds beneath the sentence — the pull requests behind the count, every commit of the day with
+its message and author, the releases by name — each a link. The list scrolls inside the popover
+past about twenty lines, and it stays while the mouse is over the chip or the popover itself, so
+a busy day can be read without leaving the page. Clicking the chip itself opens GitHub's own
+list of exactly that, cut to the window.
 
 It is a morning paper rather than a feed. The edition is made up once a day, at 08:00 unless
 Settings says otherwise, and covers everything since the previous one: yesterday at the same hour
@@ -120,11 +120,11 @@ that point inside a repository do not have a row for the repository itself. Sett
 a way to add one by name, the edition hour, a switch for the column, and a **Refresh now** that
 asks GitHub again without moving the window.
 
-← from the search crosses into the column, ↑ ↓ walk the chips, ↵ opens, → comes back, and
-typing anything drops you straight back into the search. Tab walks news, links, pull requests and
-round again. Public repositories need no token; a private one is fetched with whichever saved
-token can see it, and says so in Settings when none can. Three columns need about 1280 px; below
-that the news steps out first and the menu is what it was.
+The column is read with the mouse and never takes the keyboard: prose is not a list of rows to
+be a cursor in, so the arrows and Tab stay with the links and the pull requests exactly as
+before. Public repositories need no token; a private one is fetched with whichever saved token
+can see it, and says so in Settings when none can. Three columns need about 1280 px; below that
+the news steps out first and the menu is what it was.
 
 ## Backup
 

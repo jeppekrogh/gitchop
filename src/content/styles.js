@@ -302,8 +302,7 @@ window.__gitchop.CSS = `
 
 /* A column without the cursor keeps its place marked, but quietly. */
 .gc-stage:not([data-region="panel"]) .gc-panel .gc-item[data-active="true"],
-.gc-stage:not([data-region="pulls"]) .gc-pulls .gc-item[data-active="true"],
-.gc-stage:not([data-region="news"]) .gc-news .gc-item[data-active="true"] {
+.gc-stage:not([data-region="pulls"]) .gc-pulls .gc-item[data-active="true"] {
   background: transparent;
   border-left-color: rgba(255, 255, 255, 0.28);
 }
@@ -643,8 +642,8 @@ window.__gitchop.CSS = `
 }
 
 /*
- * One repository is a few sentences, and every fact in them is a chip: the thing the cursor lands
- * on, and the thing that opens. The words between are dimmer, so the facts read first.
+ * One repository is a few sentences, and every fact in them is a chip: the thing the mouse hovers
+ * and clicks. The words between are dimmer, so the facts read first.
  */
 .gc-prose-row {
   padding: 2px 15px 9px 13px;
@@ -665,43 +664,54 @@ window.__gitchop.CSS = `
   white-space: nowrap;
 }
 
-.gc-chip[data-active="true"] {
+/* Lit while hovered, and while its popover is the one that is up. */
+.gc-chip:hover,
+.gc-chip[data-open="true"] {
   background: rgba(255, 255, 255, 0.07);
   border-bottom-color: #fff;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07);
 }
 
-/* The column's place is kept while the cursor is elsewhere, but quietly. */
-.gc-stage:not([data-region="news"]) .gc-chip[data-active="true"] {
-  background: transparent;
-  box-shadow: none;
-  border-bottom-color: rgba(255, 255, 255, 0.5);
-}
-
 /*
  * What a fact is made of: a list under its sentence, one line per pull request, commit or
- * release, each a link — every one of them, scrolling inside the popover past about twenty (the
- * script sets the height). Unlike the title popover it can be entered, so it takes the pointer —
- * only while shown, or an invisible sheet would sit over the prose.
+ * release, each a link — every one of them, scrolling inside the card past about twenty (the
+ * script sets the height). The outer element is the bridge: transparent, sitting flush under the
+ * chip's line, its padding the visible gap, so the mouse crossing the gap is still in the popover
+ * and not on the next line's chips. It takes the pointer only while shown, or an invisible sheet
+ * would sit over the prose.
  */
 .gc-pop--list {
+  padding: 6px 0 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.gc-pop--list[data-below="false"] {
+  padding: 0 0 6px;
+}
+
+.gc-pop--list[data-shown="true"] {
+  pointer-events: auto;
+}
+
+.gc-pop-card {
   padding: 5px 0;
+  background: #14171b;
+  border: 1px solid var(--gc-line);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.85);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
 }
 
-.gc-pop--list::-webkit-scrollbar {
+.gc-pop-card::-webkit-scrollbar {
   width: 8px;
 }
 
-.gc-pop--list::-webkit-scrollbar-thumb {
+.gc-pop-card::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.16);
-}
-
-.gc-pop--list[data-shown="true"] {
-  pointer-events: auto;
 }
 
 .gc-pop-item {

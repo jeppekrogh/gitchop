@@ -125,7 +125,7 @@ window.__gitchop = window.__gitchop || {};
      * itself has no box, so the compositor sees no blocking handler over the page and scrolls it
      * without asking.
      */
-    const SCROLLERS = '.gc-list, .gc-pop--list';
+    const SCROLLERS = '.gc-list, .gc-pop-card';
     const listCanScroll = (list, event) => {
       const room = list.scrollHeight - list.clientHeight;
       if (room <= 0) return false;

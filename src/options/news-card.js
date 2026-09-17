@@ -211,11 +211,10 @@ function render(state, error) {
       'note',
       'A column on the far side of the menu with what happened in the repositories you follow, told ' +
         'in a few sentences each — a release, the commits and who made them, the pull requests merged ' +
-        'and opened, the issues. Every fact is a chip: hover it, or land on it with the arrows, and what ' +
-        'it is made of unfolds beneath. It is a morning paper rather than a feed — made up once a day ' +
-        'at the hour below, covering everything since the previous edition, and left alone until the ' +
-        'next. ← from the search crosses into it, → comes back, and typing anything comes straight ' +
-        'back to the search.',
+        'and opened, the issues. Every fact is a chip: hover it and what it is made of unfolds ' +
+        'beneath, every line a link. It is a morning paper rather than a feed — made up once a day at ' +
+        'the hour below, covering everything since the previous edition, and left alone until the ' +
+        'next. It is read with the mouse; the keys stay with the links and the pull requests.',
     ),
   );
 
