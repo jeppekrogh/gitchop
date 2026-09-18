@@ -14,19 +14,7 @@
         background: rgba(255,255,255,.9); border: 1px solid #d0d7de; padding: 8px 10px;
       }
       #tools input { width: 120px; }
-      #fx {
-        position: fixed; bottom: 12px; right: 12px; z-index: 10;
-        display: grid; gap: 7px;
-        font: 12px ui-monospace, monospace; color: #24292f;
-        background: rgba(255,255,255,.9); border: 1px solid #d0d7de; padding: 10px 12px;
-      }
-      #fx b { font-weight: 600; letter-spacing: 0.04em; }
-      #fx .fxrow { display: grid; grid-template-columns: 80px 158px 52px; gap: 8px; align-items: center; }
-      #fx input[type="checkbox"] { justify-self: start; margin: 0; }
-      #fx output { text-align: right; }
-      #fx .chips { display: grid; grid-template-columns: repeat(9, 14px); gap: 4px; }
-      #fx .chips button { width: 14px; height: 14px; padding: 0; border: 1px solid #d0d7de; cursor: pointer; }
-      #fx .chips button[data-selected="true"] { outline: 2px solid #0969da; outline-offset: 1px; }
+      #settings { position: fixed; inset: 0; z-index: 5; width: 100vw; height: 100vh; border: 0; background: #fff; }
     </style>
   </head>
   <body>
@@ -35,11 +23,7 @@
       <span id="state">ready</span>
       <button id="chop">chop (or press .)</button>
       <input id="typehere" placeholder="typing here = no chop" />
-    </div>
-    <!-- The settings page needs a real extension context, so the Settings row cannot open it here;
-         these sliders stand in for its Chop effect card, writing to the same (fake) store. -->
-    <div id="fx">
-      <b>chop effect</b>
+      <button id="settings-toggle">settings</button>
     </div>
 
     <script>
@@ -122,9 +106,117 @@
         ],
       };
 
-      // The pull requests, as the background would answer them. ?pulls=off hides the column,
-      // ?pulls=empty shows three quiet lanes, ?pulls=fail shows a token that cannot read pull
+      // What the settings page asks the background that the menu never does: the tokens, the backup,
+      // the private index. ?token=none starts with nothing saved — every card then says what a token
+      // would unlock — ?backup=on starts with the gist connected, ?index=empty with no index built and
+      // ?index=public with one that found no private repositories.
+      const now = () => new Date().toISOString();
+      const wait = (ms) => new Promise((done) => setTimeout(done, ms));
+      const backup = params.get('backup') === 'on';
+      const sync = {
+        tokens: params.get('token') === 'none' ? [] : [{ id: 't1', secret: 'ghp_harness', login: 'jeppekrogh', kind: 'classic', scopes: ['repo', 'gist'] }],
+        gistId: backup ? 'c0ffee5eed1234567890abcdef' : null,
+        lastPulledAt: backup ? '2026-09-17T06:00:00.000Z' : null,
+        lastPushedAt: backup ? '2026-09-17T07:12:00.000Z' : null,
+        dirty: false,
+        lastError: null,
+      };
+      function syncState() {
+        const hasToken = sync.tokens.length > 0;
+        return {
+          ok: true,
+          tokens: sync.tokens.map(({ id, login, kind, scopes }) => ({ id, login, kind, scopes, broad: scopes.includes('repo') })),
+          hasToken,
+          connected: hasToken && Boolean(sync.gistId),
+          gistId: sync.gistId,
+          gistUrl: sync.gistId ? `https://gist.github.com/${sync.gistId}` : null,
+          lastPulledAt: sync.lastPulledAt,
+          lastPushedAt: sync.lastPushedAt,
+          dirty: sync.dirty,
+          lastError: sync.lastError,
+        };
+      }
+      const NO_INDEX = { count: 0, privateCount: 0, owners: [], builtAt: null };
+      const builtIndex = (at) => ({
+        count: 212,
+        privateCount: params.get('index') === 'public' ? 0 : 143,
+        owners: [{ owner: 'itk-dev', count: 168 }, { owner: 'os2display', count: 31 }, { owner: 'jeppekrogh', count: 13 }],
+        builtAt: at,
+      });
+      let index = params.get('index') === 'empty' || sync.tokens.length === 0 ? NO_INDEX : builtIndex('2026-09-16T08:02:11.000Z');
+      const indexState = () => ({ ok: true, ...index, failures: [] });
+      async function settingsAnswer(message) {
+        switch (message.type) {
+          case 'gitchop:sync:state':
+            return syncState();
+          case 'gitchop:token:save': {
+            await wait(600);
+            const secret = String(message.token ?? '').trim();
+            if (!secret) return { ok: false, error: 'A token is required.' };
+            if (sync.tokens.some((entry) => entry.secret === secret)) return { ok: false, error: 'That token is already saved.' };
+            // Labelled the way GitHub would label it; anything else is saved unlabelled, as the background does.
+            const fine = secret.startsWith('github_pat_');
+            const classic = secret.startsWith('ghp_');
+            sync.tokens.push({
+              id: crypto.randomUUID(),
+              secret,
+              login: fine || classic ? 'someone' : null,
+              kind: fine ? 'fine-grained' : classic ? 'classic' : null,
+              scopes: classic ? ['repo'] : [],
+            });
+            return syncState();
+          }
+          case 'gitchop:token:remove':
+            sync.tokens = sync.tokens.filter((entry) => entry.id !== message.id);
+            // Nothing left to reach GitHub with: the backup, the index and the snapshots go with it.
+            if (sync.tokens.length === 0) {
+              Object.assign(sync, { gistId: null, dirty: false });
+              index = NO_INDEX;
+              pullsFilled = false;
+              newsFilled = false;
+            }
+            return syncState();
+          case 'gitchop:sync:connect':
+            if (sync.tokens.length === 0) return { ok: false, error: 'Add a token first.' };
+            await wait(700);
+            Object.assign(sync, {
+              gistId: String(message.gistId ?? '').trim() || 'c0ffee5eed1234567890abcdef',
+              lastPulledAt: now(),
+              lastPushedAt: now(),
+              dirty: false,
+              lastError: null,
+            });
+            return syncState();
+          case 'gitchop:sync:stop':
+            Object.assign(sync, { gistId: null, dirty: false, lastError: null });
+            return syncState();
+          case 'gitchop:sync:pull':
+            await wait(600);
+            Object.assign(sync, { lastPulledAt: now(), dirty: false });
+            return { ...syncState(), changed: true };
+          case 'gitchop:sync:push':
+            await wait(600);
+            Object.assign(sync, { lastPushedAt: now(), dirty: false });
+            return { ...syncState(), changed: true };
+          case 'gitchop:index:state':
+            return indexState();
+          case 'gitchop:index:build':
+            if (sync.tokens.length === 0) return { ok: false, error: 'Add a token first.' };
+            await wait(1200);
+            index = builtIndex(now());
+            return indexState();
+          case 'gitchop:index:clear':
+            index = NO_INDEX;
+            return indexState();
+          default:
+            return null;
+        }
+      }
+
+      // The pull requests, as the background would answer them. ?pulls=off starts with the switch
+      // off, ?pulls=empty shows three quiet lanes, ?pulls=fail shows a token that cannot read pull
       // requests, and ?pulls=cached skips the skeletons and paints a fresh snapshot straight away.
+      // Once refreshed, the snapshot stays: the next open paints from it, as the background's would.
       const LANES = [
         { id: 'reviewed', title: 'Feedback on your PRs', empty: 'no feedback on your PRs yet', slots: 3, all: 'https://github.com/pulls' },
         { id: 'needsReview', title: 'Waiting on you', empty: 'nothing waiting on you', slots: 3, all: 'https://github.com/pulls/review-requested' },
@@ -161,28 +253,38 @@
           pull('itk-dev/hoeringsportal', 305, 'Draft: attachments on replies', { private: true, draft: true, age: '4d' }),
         ],
       };
+      const pullsSettings = { enabled: params.get('pulls') === 'off' ? 0 : 1, badge: 1, drafts: 0 };
+      let pullsFilled = params.get('pulls') === 'cached';
+      let pullsFetchedAt = pullsFilled ? '2026-09-17T07:10:00.000Z' : null;
       function pullsAnswer(message) {
         const mode = params.get('pulls') ?? 'on';
-        if (mode === 'off') return { ok: true, show: false };
+        const hasToken = sync.tokens.length > 0;
+        const head = { ok: true, settings: { ...pullsSettings }, hasToken, show: hasToken && pullsSettings.enabled === 1, partial: null };
+        if (!head.show) return head;
         const bare = LANES.map((lane) => ({ ...lane, pulls: null, total: null }));
         const filled = LANES.map((lane) => {
           const pulls = mode === 'empty' ? [] : PULLS[lane.id];
           return { ...lane, pulls, total: pulls.length };
         });
-        if (message.type === 'gitchop:pulls') {
-          if (mode === 'cached') return { ok: true, show: true, stale: false, fetchedAgo: '2m', error: null, lanes: filled };
-          return { ok: true, show: true, stale: true, fetchedAgo: '', error: null, lanes: bare };
+        if (message.type === 'gitchop:pulls:refresh') {
+          const fail = 'The token cannot read pull requests. A classic token needs repo; a fine-grained one needs Pull requests: read-only.';
+          if (mode === 'fail') return { ...head, stale: false, fetchedAt: null, fetchedAgo: '', error: fail, lanes: bare };
+          pullsFilled = true;
+          pullsFetchedAt = now();
+          return { ...head, stale: false, fetchedAt: pullsFetchedAt, fetchedAgo: 'now', error: null, lanes: filled };
         }
-        const fail = 'The token cannot read pull requests. A classic token needs repo; a fine-grained one needs Pull requests: read-only.';
-        if (mode === 'fail') return { ok: true, show: true, stale: false, fetchedAgo: '', error: fail, lanes: bare };
-        return { ok: true, show: true, stale: false, fetchedAgo: 'now', error: null, lanes: filled };
+        if (pullsFilled) return { ...head, stale: false, fetchedAt: pullsFetchedAt, fetchedAgo: '2m', error: null, lanes: filled };
+        return { ...head, stale: true, fetchedAt: null, fetchedAgo: '', error: null, lanes: bare };
       }
 
-      // The news, as the background would answer it. ?news=off hides the column and the subscribe
-      // rows, ?news=empty is the feature on with nothing subscribed yet (→ on a repository row shows
-      // the way in), ?news=fail has one repository the token cannot see, and ?news=cached paints this
-      // morning's edition straight away instead of skeletons first.
+      // The news, as the background would answer it. ?news=off starts with the switch off — no column,
+      // no subscribe rows — ?news=empty is the feature on with nothing subscribed yet (→ on a repository
+      // row shows the way in), ?news=fail has one repository the token cannot see, and ?news=cached
+      // paints this morning's edition straight away instead of skeletons first.
       const newsMode = params.get('news') ?? 'on';
+      const newsSettings = { enabled: newsMode === 'off' ? 0 : 1, hour: 8 };
+      let newsFilled = newsMode === 'cached';
+      const clock = (hour) => `${String(hour).padStart(2, '0')}:00`;
       const newsRepos = newsMode === 'empty' ? [] : ['itk-dev/economics', 'os2display/display-api-service', 'Leantime/leantime'];
       const newsWindow = { since: '2026-09-16T06:00:00.000Z', until: '2026-09-17T06:00:00.000Z' };
       // Prose as the background writes it: plain text and chips, each chip carrying what its
@@ -236,7 +338,6 @@
         ],
       };
       function newsAnswer(message, filled) {
-        if (newsMode === 'off') return { ok: true, show: false, settings: { enabled: 0, hour: 8, repos: [] }, repos: [] };
         const repos = newsRepos.map((repo) => {
           const prose = NEWS[repo.toLowerCase()] ?? [
             fact('2 commits', 'commits', `https://github.com/${repo}/commits/main`, [line('Tidy up', '0a1b2c3 · someone', `https://github.com/${repo}/commit/0a1b2c3`), line('Tidy up more', '1b2c3d4 · someone', `https://github.com/${repo}/commit/1b2c3d4`)]),
@@ -249,39 +350,89 @@
         });
         return {
           ok: true,
-          show: true,
-          settings: { enabled: 1, hour: 8, repos: newsRepos.slice() },
+          show: newsSettings.enabled === 1,
+          settings: { ...newsSettings, repos: newsRepos.slice() },
           stale: !filled,
           ...newsWindow,
-          sinceLabel: 'since yesterday 08:00',
+          sinceLabel: `since yesterday ${clock(newsSettings.hour)}`,
           fetchedAt: filled ? '2026-09-17T06:00:04.000Z' : null,
           repos,
         };
       }
 
+      // The settings page is the real options.html in a frame, fetched and handed two things before
+      // its own scripts run: a <base>, so its relative paths still resolve from here, and the
+      // harness's browser object, so it shares one store and one background with the menu — a slider
+      // moved there shapes the next chop here, a token removed there takes the pull requests out of
+      // the menu. Its ES modules will not load from file://, which is what `node dev/serve.mjs` is
+      // for; ?settings opens it on load. Once made, the frame is hidden rather than torn down, so the
+      // listeners it registered stay valid.
+      const SERVED = location.protocol === 'http:' || location.protocol === 'https:';
+      let manifest = { name: 'gitchop for GitHub', version: 'harness' };
+      let frame = null;
+      const toggle = document.getElementById('settings-toggle');
+      function showSettings(show) {
+        if (frame) frame.hidden = !show;
+        toggle.textContent = show ? 'back to the page' : 'settings';
+        document.getElementById('state').textContent = show ? 'settings' : 'ready';
+      }
+      async function openSettings() {
+        if (!SERVED) {
+          document.getElementById('state').textContent = 'settings need http: node dev/serve.mjs';
+          return;
+        }
+        if (!frame) {
+          const page = new URL('../src/options/options.html', location.href);
+          const [html, found] = await Promise.all([
+            fetch(page).then((response) => response.text()),
+            fetch(new URL('../manifest.json', location.href)).then((response) => response.json()).catch(() => null),
+          ]);
+          if (found) manifest = found;
+          frame = document.createElement('iframe');
+          frame.id = 'settings';
+          frame.title = 'gitchop settings';
+          frame.srcdoc = html.replace(/<head>/i, `<head><base href="${page.href}"><script>window.browser = window.chrome = parent.browser;<\/script>`);
+          document.body.append(frame);
+        }
+        showSettings(true);
+      }
+      toggle.addEventListener('click', () => {
+        if (frame && !frame.hidden) showSettings(false);
+        else openSettings();
+      });
+
       const storageListeners = [];
+      const notify = (changes, area) => {
+        for (const listener of storageListeners) listener(changes, area);
+      };
       window.browser = window.chrome = {
         runtime: {
           lastError: undefined,
+          getManifest: () => manifest,
           async sendMessage(message) {
             document.getElementById('state').textContent = `msg: ${message.type}`;
             if (message.type === 'gitchop:options') {
-              document.getElementById('state').textContent = 'settings: the sliders, bottom right';
-              document.getElementById('fx').animate(
-                [{ boxShadow: '0 0 0 3px #0969da' }, { boxShadow: '0 0 0 3px rgba(9, 105, 218, 0)' }],
-                { duration: 1400, easing: 'ease-out' },
-              );
+              openSettings();
               return { ok: true };
             }
             if (message.type === 'gitchop:pulls') return pullsAnswer(message);
             if (message.type === 'gitchop:pulls:refresh') {
-              await new Promise((done) => setTimeout(done, 900));
+              await wait(900);
               return pullsAnswer(message);
             }
-            if (message.type === 'gitchop:news') return newsAnswer(message, newsMode === 'cached');
+            if (message.type === 'gitchop:pulls:settings') {
+              Object.assign(pullsSettings, message.patch);
+              return pullsAnswer({ type: 'gitchop:pulls' });
+            }
+            if (message.type === 'gitchop:news') return newsAnswer(message, newsFilled);
             if (message.type === 'gitchop:news:refresh') {
-              await new Promise((done) => setTimeout(done, 900));
+              await wait(900);
+              newsFilled = true;
               return newsAnswer(message, true);
+            }
+            if (message.type === 'gitchop:news:settings') {
+              Object.assign(newsSettings, message.patch);
+              return newsAnswer(message, newsFilled);
             }
             if (message.type === 'gitchop:news:subscribe' || message.type === 'gitchop:news:unsubscribe') {
               const subscribe = message.type.endsWith(':subscribe');
@@ -289,6 +440,7 @@
               if (subscribe && at < 0) newsRepos.push(message.repo);
               if (!subscribe && at >= 0) newsRepos.splice(at, 1);
               // A repository just subscribed has no prose yet; everything else keeps this morning's.
+              newsFilled = true;
               const answer = newsAnswer(message, true);
               if (subscribe) {
                 const fresh = answer.repos.find((entry) => entry.repo === message.repo);
@@ -297,6 +449,8 @@
               }
               return answer;
             }
+            const settled = await settingsAnswer(message);
+            if (settled) return settled;
             if (message.type !== 'gitchop:repos') return { ok: true };
             await new Promise((done) => setTimeout(done, 260));
             if (params.get('search') === 'fail') return { ok: false, error: 'GitHub rate-limited the search.' };
@@ -316,19 +470,41 @@
         storage: {
           sync: {
             get: async () => JSON.parse(JSON.stringify(store)),
-            // Notifies like the real API, so the content script's effects cache follows the sliders.
+            // Notifies like the real API, so the content script's effects cache follows the settings page.
             set: async (patch) => {
               const changes = {};
               for (const [key, value] of Object.entries(patch)) {
                 changes[key] = { oldValue: store[key], newValue: value };
               }
               Object.assign(store, patch);
-              for (const listener of storageListeners) listener(changes, 'sync');
+              notify(changes, 'sync');
+              // A saved link leaves the backup with changes pending, and the background pushes them a
+              // beat later; the token card follows the local `sync` record through both.
+              if ('links' in patch && sync.gistId) {
+                sync.dirty = true;
+                notify({ sync: {} }, 'local');
+                setTimeout(() => {
+                  Object.assign(sync, { dirty: false, lastPushedAt: now() });
+                  notify({ sync: {} }, 'local');
+                }, 1500);
+              }
             },
           },
           onChanged: { addListener: (listener) => storageListeners.push(listener) },
         },
+        // ?access=denied shows the card Firefox users see before granting github.com; granting it here
+        // simply succeeds. Consent for data collection, which the token card asks for, is always given.
+        permissions: {
+          contains: async (wanted) => !wanted.origins || access,
+          request: async () => {
+            access = true;
+            return true;
+          },
+          onAdded: { addListener() {} },
+          onRemoved: { addListener() {} },
+        },
       };
+      let access = params.get('access') !== 'denied';
 
       for (const key of Object.keys(store.effects)) {
         if (params.has(key)) store.effects[key] = Number(params.get(key));
@@ -337,6 +513,8 @@
       document.getElementById('chop').addEventListener('click', () => {
         dispatchEvent(new KeyboardEvent('keydown', { key: '.', bubbles: true }));
       });
+
+      if (params.has('settings')) openSettings();
     </script>
     <script src="../src/content/context.js"></script>
     <script src="../src/content/effects.js"></script>
@@ -345,67 +523,7 @@
     <script src="../src/content/menu.js"></script>
     <script src="../src/content/main.js"></script>
     <script>
-      const fxRows = document.getElementById('fx');
-      for (const spec of window.__gitchop.EFFECTS.SLIDERS) {
-        // A <label> would forward every click to its first button, so swatch rows are plain divs.
-        const row = document.createElement(spec.swatches ? 'div' : 'label');
-        row.className = 'fxrow';
-        row.title = spec.hint;
-        const name = document.createElement('span');
-        name.textContent = spec.label.toLowerCase();
-        const value = document.createElement('output');
-
-        if (spec.swatches) {
-          const chips = document.createElement('div');
-          chips.className = 'chips';
-          const mark = () => {
-            for (const chip of chips.children) {
-              chip.dataset.selected = String(Number(chip.dataset.value) === store.effects[spec.id]);
-            }
-            const current = spec.swatches.find((swatch) => swatch.value === store.effects[spec.id]);
-            value.textContent = current ? current.name : `${store.effects[spec.id]}°`;
-          };
-          for (const swatch of spec.swatches) {
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.title = swatch.name;
-            chip.dataset.value = String(swatch.value);
-            chip.style.background = swatch.value === 0 ? '#f2f5f8' : `hsl(${swatch.value} 75% 60%)`;
-            chip.addEventListener('click', () => {
-              browser.storage.sync.set({ effects: { ...store.effects, [spec.id]: swatch.value } }).then(mark);
-            });
-            chips.append(chip);
-          }
-          mark();
-          row.append(name, chips, value);
-        } else if (spec.toggle) {
-          const input = document.createElement('input');
-          input.type = 'checkbox';
-          input.checked = (store.effects[spec.id] ?? spec.value) === 1;
-          value.textContent = input.checked ? 'on' : 'off';
-          input.addEventListener('change', () => {
-            value.textContent = input.checked ? 'on' : 'off';
-            browser.storage.sync.set({ effects: { ...store.effects, [spec.id]: input.checked ? 1 : 0 } });
-          });
-          row.append(name, input, value);
-        } else {
-          const input = document.createElement('input');
-          input.type = 'range';
-          input.min = String(spec.min);
-          input.max = String(spec.max);
-          input.step = '1';
-          input.value = String(store.effects[spec.id] ?? spec.value);
-          value.textContent = input.value;
-          input.addEventListener('input', () => {
-            value.textContent = input.value;
-            browser.storage.sync.set({ effects: { ...store.effects, [spec.id]: Number(input.value) } });
-          });
-          row.append(name, input, value);
-        }
-        fxRows.append(row);
-      }
-
-      // harness.html?autochop&hue=210&tint=80 chops on load, so a reload replays the effect.
+      // harness.html?autochop&colour=210&epicness=90 chops on load, so a reload replays the effect.
       if (params.has('autochop')) document.getElementById('chop').click();
     </script>
   </body>
