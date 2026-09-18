@@ -3,7 +3,7 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
-## Unreleased
+## 2.5.0
 
 - **News from the repositories you follow.** Subscribe to a repository and a third column rises on
   the left of the menu with what happened in it, told in a few sentences — *Released v3.1.0.
