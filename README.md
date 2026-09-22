@@ -126,6 +126,18 @@ before. Public repositories need no token; a private one is fetched with whichev
 can see it, and says so in Settings when none can. Three columns need about 1280 px; below that
 the news steps out first and the menu is what it was.
 
+## Contributions
+
+With a token saved, the head of the menu carries the number your profile prints for the year —
+*1 234 contributions in 2026* — beside the title, each digit a reel that rolls up from nought as the
+panel rises. It paints from its last snapshot; when the menu opens on one older than five minutes it
+asks GitHub again behind it, and a count that has grown since rolls its last digits on, so the day's
+work is seen to arrive. Clicking the number opens your profile, where the calendar behind it is.
+
+It is one GraphQL request per saved token, covering January the 1st to now, and the highest count is
+the one shown — a fine-grained token sees fewer repositories than a classic one and may count fewer.
+Settings has a switch for it, the number, when it was last refreshed, and a **Refresh now**.
+
 ## Backup
 
 Links live in the browser profile, and go with the extension if you remove it. Connect a secret gist
@@ -139,7 +151,7 @@ No build step for the code — the files in `src/` are what runs. Packaging only
 `manifest.json` each browser gets, since the two disagree about the background script.
 
 ```sh
-node dev/context.test.mjs && node dev/repos.test.mjs && node dev/effects.test.mjs && node dev/pulls.test.mjs && node dev/news.test.mjs
+node dev/context.test.mjs && node dev/repos.test.mjs && node dev/effects.test.mjs && node dev/pulls.test.mjs && node dev/news.test.mjs && node dev/contributions.test.mjs && node dev/odometer.test.mjs
 node dev/build.mjs all                                 # dist/gitchop-<version>-<browser>.<ext>
 node dev/build.mjs chrome --no-zip                     # unpacked, for chrome://extensions
 open dev/harness.html                                  # the menu, without installing

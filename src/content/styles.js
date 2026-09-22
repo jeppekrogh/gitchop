@@ -233,6 +233,82 @@ window.__gitchop.CSS = `
   color: var(--gc-heading);
 }
 
+/*
+ * The year's contributions, in the head beside the title, as the profile prints them. Each digit
+ * is a reel: a strip of glyphs sliding behind a window one digit tall, so a change rolls rather
+ * than blinks and the first paint rolls up from nought once the panel is on screen. The strip
+ * moves by a percentage of its own height, so the digit's size is written once, here, and the
+ * head stays exactly as tall as its title. The whole thing is a link to the profile, where the
+ * calendar behind the number is.
+ */
+.gc-count {
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.gc-odo {
+  display: inline-flex;
+  align-items: center;
+  height: 11px;
+  font: 600 12px/11px var(--gc-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--gc-text);
+}
+
+.gc-odo-digit {
+  display: block;
+  height: 11px;
+  overflow: hidden;
+}
+
+.gc-odo-reel {
+  display: block;
+  transition: transform 720ms cubic-bezier(0.2, 0.7, 0.15, 1);
+  transition-delay: var(--gc-odo-delay, 0ms);
+  will-change: transform;
+}
+
+.gc-odo-reel > span {
+  display: block;
+  height: 11px;
+  line-height: 11px;
+}
+
+.gc-odo-sep {
+  display: block;
+  width: 0.3em;
+}
+
+.gc-odo-bar {
+  width: 2.8em;
+  height: 7px;
+}
+
+.gc-count-label {
+  font: 400 10px/1 var(--gc-mono);
+  letter-spacing: 0.03em;
+  color: var(--gc-dim);
+}
+
+/* Taken down when there is no number to show; the class above would otherwise outrank the attribute. */
+.gc-count[hidden] {
+  display: none;
+}
+
+a.gc-count[href]:hover .gc-odo {
+  color: #fff;
+}
+
+a.gc-count[href]:hover .gc-count-label {
+  color: var(--gc-text);
+}
+
 .gc-filter {
   width: 100%;
   border: 0;
@@ -332,7 +408,8 @@ window.__gitchop.CSS = `
     animation: none;
   }
 
-  .gc-pop {
+  .gc-pop,
+  .gc-odo-reel {
     transition: none;
   }
 }

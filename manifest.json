@@ -18,6 +18,7 @@
         "src/content/effects.js",
         "src/content/styles.js",
         "src/content/chop.js",
+        "src/content/odometer.js",
         "src/content/menu.js",
         "src/content/main.js"
       ],

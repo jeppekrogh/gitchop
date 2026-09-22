@@ -50,7 +50,7 @@ window.__gitchop = window.__gitchop || {};
   /** How long a popover outlives the mouse leaving its chip — long enough to reach it diagonally. */
   const POP_LINGER = 120;
 
-  gc.createMenu = function createMenu({ ctx, links, pulls, news, onClose, onOptions, onLinksChanged }) {
+  gc.createMenu = function createMenu({ ctx, links, pulls, news, contributions, onClose, onOptions, onLinksChanged }) {
     const panel = node('div', 'gc-panel');
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
@@ -58,6 +58,29 @@ window.__gitchop = window.__gitchop || {};
 
     const head = node('div', 'gc-head');
     head.append(node('span', 'gc-title', 'Links'));
+
+    /**
+     * The year's contributions beside the title, when the background said so — a token, and the
+     * switch on. The reels are for looking at; the exact figure goes on the link for anything that
+     * reads it. It is a link to the profile once a snapshot says whose, and before that only the
+     * place where a number will be.
+     */
+    let count = null;
+    if (contributions?.show) {
+      const link = node('a', 'gc-count');
+      const odometer = gc.createOdometer();
+      const label = node('span', 'gc-count-label');
+      link.append(odometer.element, label);
+      link.addEventListener('click', (event) => {
+        if (!link.getAttribute('href')) return;
+        // Let the anchor navigate, but get the overlay out of the way of the page load.
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
+        cancelSearch();
+        onClose();
+      });
+      count = { element: link, odometer, label };
+      head.append(link);
+    }
 
     const filter = node('input', 'gc-filter');
     filter.type = 'text';
@@ -317,6 +340,8 @@ window.__gitchop = window.__gitchop || {};
     let newsData = news ?? null;
     let newsRun = 0;
     let newsBusy = false;
+    let contribData = contributions ?? null;
+    let contribRun = 0;
 
     function subscribed(repo) {
       return (newsData?.settings?.repos ?? []).some((seen) => seen.toLowerCase() === String(repo).toLowerCase());
@@ -837,6 +862,53 @@ window.__gitchop = window.__gitchop || {};
       refreshNews();
     }
 
+    /**
+     * The number as it stands. The total is null until a snapshot exists, which is the cue for a
+     * shimmer where the digits will be; null with a failure on record — the refresh refused, and
+     * there was nothing before it — is no number at all, and the settings page says why. The year
+     * is the snapshot's, so a count is never labelled with a year it does not cover.
+     */
+    function renderCount() {
+      if (!count) return;
+      const data = contribData ?? {};
+      const known = Number.isFinite(data.total);
+      if (!known && data.error) {
+        count.element.hidden = true;
+        return;
+      }
+      count.element.hidden = false;
+      const year = data.year ?? new Date().getFullYear();
+      count.label.textContent = `contributions in ${year}`;
+      count.odometer.set(known ? data.total : null);
+      if (!known) return;
+      count.element.setAttribute('aria-label', `${data.total.toLocaleString('en')} contributions in ${year}`);
+      if (gc.isSafeUrl(data.url)) {
+        count.element.href = data.url;
+        count.element.title = data.url;
+      }
+    }
+
+    /**
+     * The snapshot painted instantly; if the background said it was stale, ask for a fresh one and
+     * roll to it when it lands — the last digits turning over is the day's work arriving. A number
+     * that never came, with nothing before it, is taken down rather than left shimmering.
+     */
+    async function refreshCount() {
+      if (!count || !contribData?.stale) return;
+      const run = ++contribRun;
+      let next = null;
+      try {
+        const response = await api.runtime.sendMessage({ type: 'gitchop:contributions:refresh' });
+        if (response?.ok) next = response;
+      } catch {
+        /* keep what is already on screen */
+      }
+      if (run !== contribRun) return;
+      if (next) contribData = next;
+      else if (!Number.isFinite(contribData?.total)) contribData = { ...contribData, error: contribData?.error ?? 'GitHub did not answer.' };
+      renderCount();
+    }
+
     function laneSection(lane) {
       const row = node('li', 'gc-section gc-section--lane');
       row.append(node('span', null, lane.title), node('span', 'gc-rule'));
@@ -1125,9 +1197,10 @@ window.__gitchop = window.__gitchop || {};
     }
 
     // Clicking dead space in either column must not drop focus to the page, where GitHub's
-    // single-key shortcuts would start listening again.
+    // single-key shortcuts would start listening again. An anchor without an href — the count
+    // before its snapshot has landed — is dead space too.
     stage.addEventListener('mousedown', (event) => {
-      if (event.target.closest?.('input, button, a')) return;
+      if (event.target.closest?.('input, button, a[href]')) return;
       event.preventDefault();
     });
 
@@ -1217,8 +1290,10 @@ window.__gitchop = window.__gitchop || {};
     render();
     renderPulls();
     renderNews();
+    renderCount();
     refreshPulls();
     refreshNews();
+    refreshCount();
 
     return {
       element: stage,
@@ -1230,6 +1305,10 @@ window.__gitchop = window.__gitchop || {};
       focus() {
         filter.focus();
         paint();
+      },
+      /** The panel has risen: the reels may roll up to the number now, where the roll can be seen. */
+      revealed() {
+        count?.odometer.reveal();
       },
     };
   };

@@ -3,6 +3,20 @@
 Reconstructed from the development history; this project has no git history before 2.0.0 to derive
 it from.
 
+## Unreleased
+
+- **Your contributions this year, in the head of the menu.** With a token saved, the number your
+  profile prints for the year — *1 234 contributions in 2026* — sits beside the title, each digit a
+  reel that rolls up from nought as the panel rises. It paints from its last snapshot; a menu opened
+  on one older than five minutes asks GitHub again behind it, and a count that has grown since rolls
+  its last digits on, so the day's work is seen to land rather than blinked in. A nine rolling over
+  keeps going up. Clicking the number opens your profile, where the calendar behind it is; reduced
+  motion shows the number plainly. It is one GraphQL request per saved token — the calendar total
+  from January the 1st to now — and the highest count wins, since a fine-grained token sees fewer
+  repositories than a classic one and may count fewer. A **Contributions** card in Settings has the
+  switch, the number, when it was refreshed, and a **Refresh now**. Removing the last token deletes
+  the snapshot with the rest. (#7)
+
 ## 2.5.0
 
 - **News from the repositories you follow.** Subscribe to a repository and a third column rises on

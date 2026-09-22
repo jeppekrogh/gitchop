@@ -174,6 +174,9 @@
               index = NO_INDEX;
               pullsFilled = false;
               newsFilled = false;
+              contribTotal = null;
+              contribFetchedAt = null;
+              contribFresh = false;
             }
             return syncState();
           case 'gitchop:sync:connect':
@@ -360,6 +363,40 @@
         };
       }
 
+      // The year's contributions, as the background would answer them. ?contributions=off starts with
+      // the switch off, ?contributions=none with no snapshot yet — a shimmer, then the number —
+      // ?contributions=fail with no snapshot and a token that cannot count, and ?contributions=cached
+      // with a fresh snapshot that needs no refresh. Otherwise the snapshot is a little behind, so the
+      // refresh that follows rolls the last digits on — the case worth watching.
+      const contribMode = params.get('contributions') ?? 'on';
+      const contribSettings = { enabled: contribMode === 'off' ? 0 : 1 };
+      let contribTotal = contribMode === 'none' || contribMode === 'fail' ? null : contribMode === 'cached' ? 1234 : 1226;
+      let contribFetchedAt = contribTotal === null ? null : '2026-09-17T07:10:00.000Z';
+      let contribFresh = contribMode === 'cached';
+      function contributionsAnswer(message) {
+        const hasToken = sync.tokens.length > 0;
+        const head = { ok: true, settings: { ...contribSettings }, hasToken, show: hasToken && contribSettings.enabled === 1, year: 2026, partial: null };
+        if (message.type === 'gitchop:contributions:refresh') {
+          if (contribMode === 'fail') {
+            return { ...head, stale: true, total: contribTotal, login: null, url: null, fetchedAt: contribFetchedAt, fetchedAgo: '', error: 'The token cannot read your contributions. A classic token with repo can; a fine-grained one counts only what it is allowed to see.' };
+          }
+          contribTotal = 1234;
+          contribFetchedAt = now();
+          contribFresh = true;
+        }
+        const known = contribTotal !== null;
+        return {
+          ...head,
+          stale: !contribFresh,
+          total: contribTotal,
+          login: known ? 'jeppekrogh' : null,
+          url: known ? 'https://github.com/jeppekrogh' : null,
+          fetchedAt: contribFetchedAt,
+          fetchedAgo: known ? (contribFresh ? 'now' : '2h') : '',
+          error: null,
+        };
+      }
+
       // The settings page is the real options.html in a frame, fetched and handed two things before
       // its own scripts run: a <base>, so its relative paths still resolve from here, and the
       // harness's browser object, so it shares one store and one background with the menu — a slider
@@ -433,6 +470,15 @@
             if (message.type === 'gitchop:news:settings') {
               Object.assign(newsSettings, message.patch);
               return newsAnswer(message, newsFilled);
+            }
+            if (message.type === 'gitchop:contributions') return contributionsAnswer(message);
+            if (message.type === 'gitchop:contributions:refresh') {
+              await wait(900);
+              return contributionsAnswer(message);
+            }
+            if (message.type === 'gitchop:contributions:settings') {
+              Object.assign(contribSettings, message.patch);
+              return contributionsAnswer({ type: 'gitchop:contributions' });
             }
             if (message.type === 'gitchop:news:subscribe' || message.type === 'gitchop:news:unsubscribe') {
               const subscribe = message.type.endsWith(':subscribe');
@@ -520,6 +566,7 @@
     <script src="../src/content/effects.js"></script>
     <script src="../src/content/styles.js"></script>
     <script src="../src/content/chop.js"></script>
+    <script src="../src/content/odometer.js"></script>
     <script src="../src/content/menu.js"></script>
     <script src="../src/content/main.js"></script>
     <script>
