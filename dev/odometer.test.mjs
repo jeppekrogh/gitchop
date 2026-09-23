@@ -73,7 +73,7 @@ let odo = load();
 odo.set(1234);
 assert.equal(shape(odo), 'd|ddd', 'a thousands gap, no comma');
 assert.deepEqual(at(odo), [0, 0, 0, 0], 'held at nought until revealed');
-assert.deepEqual(reels(odo).map((reel) => reel.style.vars['--gc-odo-delay']), ['0ms', '55ms', '110ms', '165ms'], 'the number lands left to right');
+assert.deepEqual(reels(odo).map((reel) => reel.style.vars['--gc-odo-roll']), ['800ms', '950ms', '1100ms', '1250ms'], 'they start together and stop left to right, a beat apart');
 assert.equal(reels(odo)[0].children.length, 20, 'two runs of the digits on every reel');
 assert.equal(odo.element.attributes['aria-hidden'], 'true', 'the reels are decoration; the label around them reads');
 
@@ -81,9 +81,11 @@ assert.equal(odo.element.attributes['aria-hidden'], 'true', 'the reels are decor
 odo.set(1226);
 assert.deepEqual(at(odo), [0, 0, 0, 0]);
 odo.reveal();
-assert.deepEqual(at(odo), [1, 2, 2, 6], 'revealed: every reel rolls to its digit');
-assert.equal(percent(reels(odo)[3]), 'translateY(-30.00%)', 'a digit is five percent of a twenty-cell strip');
+assert.deepEqual(at(odo), [11, 12, 12, 16], 'revealed: every reel spins a whole turn and on to its digit');
+assert.equal(percent(reels(odo)[3]), 'translateY(-80.00%)', 'a digit is five percent of a twenty-cell strip');
 assert.equal(reels(odo)[3].style.transition, '', 'the roll uses the stylesheet transition');
+for (const reel of reels(odo)) reel.fire('transitionend');
+assert.deepEqual(at(odo), [1, 2, 2, 6], 'settled into the first run, each on its digit');
 
 // A refresh that lands higher rolls the last digits on, and no further — always upward, so six to
 // four goes up through the nine into the second run, and is put back once the roll ends.
@@ -128,7 +130,11 @@ assert.equal(odo.element.children.length, 1);
 assert.equal(odo.element.children[0].className, 'gc-bar gc-odo-bar');
 odo.set(7);
 assert.equal(shape(odo), 'd');
+assert.deepEqual(at(odo), [17], 'a number after a shimmer spins in like a first one');
+reels(odo)[0].fire('transitionend');
 assert.deepEqual(at(odo), [7]);
+odo.set(9);
+assert.deepEqual(at(odo), [9], 'a change to a number already showing is a tick, not a spin');
 odo.set(Number.NaN);
 assert.equal(odo.element.children[0].className, 'gc-bar gc-odo-bar', 'not a number is not known');
 
@@ -136,6 +142,8 @@ assert.equal(odo.element.children[0].className, 'gc-bar gc-odo-bar', 'not a numb
 odo = load();
 odo.reveal();
 odo.set(0);
+assert.deepEqual(at(odo), [10], 'a nought spins all the way round rather than standing still');
+reels(odo)[0].fire('transitionend');
 assert.deepEqual(at(odo), [0]);
 odo.set(-5);
 assert.deepEqual(at(odo), [0]);
@@ -146,7 +154,7 @@ assert.deepEqual(at(odo), [1, 2]);
 odo.set(1000000);
 assert.equal(shape(odo), 'd|ddd|ddd', 'a gap every three digits');
 
-// Reduced motion: no holding, no rolling — the digits are placed the moment they are known.
+// Reduced motion: no holding, no rolling, no spinning — the digits are placed the moment they are known.
 odo = load({ reduced: true });
 odo.set(42);
 assert.deepEqual(at(odo), [4, 2], 'placed at once, with nothing to reveal');

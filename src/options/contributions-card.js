@@ -96,8 +96,8 @@ function render(state, error) {
       'p',
       'note',
       'The number your profile prints for the year — every commit, pull request, review and issue ' +
-        'GitHub counts — in the head of the menu beside the title, each digit a reel that rolls up ' +
-        'as the panel rises. It paints from its last snapshot and asks GitHub again when the menu ' +
+        'GitHub counts — in the head of the menu beside the title, each digit a reel that spins in ' +
+        'as the panel rises and stops on its digit, left to right. It paints from its last snapshot and asks GitHub again when the menu ' +
         'opens on one older than five minutes; a count that has grown since rolls its last digits ' +
         'on. Hovering the number shows the totals for the three years before it.',
     ),

@@ -129,8 +129,9 @@ the news steps out first and the menu is what it was.
 ## Contributions
 
 With a token saved, the head of the menu carries the number your profile prints for the year —
-*1 234 contributions in 2026* — beside the title, each digit a reel that rolls up from nought as the
-panel rises. It paints from its last snapshot; when the menu opens on one older than five minutes it
+*1 234 contributions in 2026* — beside the title, each digit a reel that spins in as the panel rises
+and stops on its digit, the reels stopping one after another as a slot machine's do. It paints from
+its last snapshot; when the menu opens on one older than five minutes it
 asks GitHub again behind it, and a count that has grown since rolls its last digits on, so the day's
 work is seen to arrive. Hovering the number shows the totals for the three years before it, so this
 year has something to stand beside. It is not a link; it is there to be looked at.

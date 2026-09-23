@@ -7,8 +7,12 @@ window.__gitchop = window.__gitchop || {};
   /** Two runs of the digits, so a nine rolling over to nought keeps going up instead of spinning back. */
   const CELLS = DIGITS + DIGITS;
   const STEP = 100 / CELLS.length;
-  /** Each reel to the right settles this much later, so the number lands left to right. */
-  const STAGGER = 55;
+  /**
+   * How long the leftmost reel rolls, and how much longer each reel to its right rolls: they all
+   * start together and stop one after another, left to right, as a slot machine's do.
+   */
+  const ROLL = 800;
+  const ROLL_STEP = 150;
 
   function node(tag, className, text) {
     const element = document.createElement(tag);
@@ -19,11 +23,16 @@ window.__gitchop = window.__gitchop || {};
 
   /**
    * A number as a row of reels, one per digit: a strip of glyphs sliding behind a window one digit
-   * tall, so a change rolls rather than blinks and the first paint can roll up from nought. Groups
-   * of three are spaced, never joined with a comma — the reels are for looking at, and the exact
-   * figure goes on the label around them for anything that reads. Until the panel is on screen the
-   * reels hold at zero, whatever has been set; `reveal` lets them go, and every set after that
-   * rolls from wherever they are. Reduced motion has no reels to speak of: the digits are placed.
+   * tall, so a change rolls rather than blinks. Groups of three are spaced, never joined with a
+   * comma — the reels are for looking at, and the exact figure goes on the label around them for
+   * anything that reads. Until the panel is on screen the reels hold at zero, whatever has been
+   * set; `reveal` lets them go, and every set after that rolls from wherever they are.
+   *
+   * A number's first appearance is a spin: every reel turns through all ten digits once and then on
+   * to its own, the leftmost stopping first and each to its right a beat later, so the figure lands
+   * digit by digit. A change to a number already showing is a tick instead — the digits that moved
+   * roll straight to where they are going, always upward. Reduced motion has no reels to speak of:
+   * the digits are placed.
    *
    * The strip moves by a percentage of its own height — twenty cells make a digit five percent —
    * so no pixel size is written here and the stylesheet alone decides how tall a digit is. A reel
@@ -66,7 +75,7 @@ window.__gitchop = window.__gitchop || {};
         const digit = node('span', 'gc-odo-digit');
         const reel = node('span', 'gc-odo-reel');
         for (const glyph of CELLS) reel.append(node('span', null, glyph));
-        reel.style.setProperty('--gc-odo-delay', `${i * STAGGER}ms`);
+        reel.style.setProperty('--gc-odo-roll', `${ROLL + i * ROLL_STEP}ms`);
         reel.addEventListener('transitionend', () => settle(reel));
         place(reel, Number(start[i]), false);
         digit.append(reel);
@@ -78,8 +87,12 @@ window.__gitchop = window.__gitchop || {};
       void element.offsetWidth;
     }
 
-    /** Every reel to its digit — always upward, into the second run when the digit is behind it. */
-    function roll(digits) {
+    /**
+     * Every reel to its digit — always upward, into the second run when the digit is behind it.
+     * A spin adds a whole turn first, when the strip has room for one: a nought then turns all the
+     * way round rather than standing still.
+     */
+    function roll(digits, spin = false) {
       reels.forEach((reel, i) => {
         const wanted = Number(digits[i]);
         if (reduced) {
@@ -87,11 +100,12 @@ window.__gitchop = window.__gitchop || {};
           return;
         }
         let at = Number(reel.dataset.at) || 0;
-        const steps = (wanted - (at % DIGITS.length) + DIGITS.length) % DIGITS.length;
+        let steps = (wanted - (at % DIGITS.length) + DIGITS.length) % DIGITS.length;
         if (at + steps >= CELLS.length) {
           place(reel, at - DIGITS.length, false);
           at -= DIGITS.length;
         }
+        if (spin && at + steps + DIGITS.length < CELLS.length) steps += DIGITS.length;
         place(reel, at + steps, true);
       });
     }
@@ -109,16 +123,22 @@ window.__gitchop = window.__gitchop || {};
           return;
         }
         const digits = String(Math.max(0, Math.floor(Number(value))));
-        if (reels.length !== digits.length) build(digits.length, held ? '' : shown);
+        // Reels built with no number before them — the first number, or one after a shimmer — spin
+        // in; reels rebuilt around a number that grew a digit roll on from it.
+        let spin = false;
+        if (reels.length !== digits.length) {
+          build(digits.length, held ? '' : shown);
+          spin = !held && !shown;
+        }
         shown = digits;
-        if (!held) roll(digits);
+        if (!held) roll(digits, spin);
       },
 
-      /** The panel is on screen: roll up from nought to whatever was set, and follow every set from here. */
+      /** The panel is on screen: spin in whatever was set, and follow every set from here. */
       reveal() {
         if (!held) return;
         held = false;
-        if (shown) roll(shown);
+        if (shown) roll(shown, true);
       },
     };
   };
