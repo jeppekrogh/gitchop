@@ -378,7 +378,7 @@
         const head = { ok: true, settings: { ...contribSettings }, hasToken, show: hasToken && contribSettings.enabled === 1, year: 2026, partial: null };
         if (message.type === 'gitchop:contributions:refresh') {
           if (contribMode === 'fail') {
-            return { ...head, stale: true, total: contribTotal, login: null, url: null, fetchedAt: contribFetchedAt, fetchedAgo: '', error: 'The token cannot read your contributions. A classic token with repo can; a fine-grained one counts only what it is allowed to see.' };
+            return { ...head, stale: true, total: contribTotal, past: [], login: null, fetchedAt: contribFetchedAt, fetchedAgo: '', error: 'The token cannot read your contributions. A classic token with repo can; a fine-grained one counts only what it is allowed to see.' };
           }
           contribTotal = 1234;
           contribFetchedAt = now();
@@ -389,8 +389,9 @@
           ...head,
           stale: !contribFresh,
           total: contribTotal,
+          // The three whole years before, for the hover; an account made this year would have none.
+          past: known ? [{ year: 2025, total: 1802 }, { year: 2024, total: 1540 }, { year: 2023, total: 903 }] : [],
           login: known ? 'jeppekrogh' : null,
-          url: known ? 'https://github.com/jeppekrogh' : null,
           fetchedAt: contribFetchedAt,
           fetchedAgo: known ? (contribFresh ? 'now' : '2h') : '',
           error: null,

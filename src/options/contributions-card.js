@@ -99,7 +99,7 @@ function render(state, error) {
         'GitHub counts — in the head of the menu beside the title, each digit a reel that rolls up ' +
         'as the panel rises. It paints from its last snapshot and asks GitHub again when the menu ' +
         'opens on one older than five minutes; a count that has grown since rolls its last digits ' +
-        'on. Clicking the number opens your profile, where the calendar behind it is.',
+        'on. Hovering the number shows the totals for the three years before it.',
     ),
   );
 
@@ -124,6 +124,9 @@ function render(state, error) {
   if (state.settings.enabled === 1 && state.total !== null) {
     const facts = element('dl', 'facts');
     facts.append(element('dt', null, `In ${state.year}`), element('dd', null, Number(state.total).toLocaleString('en')));
+    for (const entry of state.past ?? []) {
+      facts.append(element('dt', null, `In ${entry.year}`), element('dd', null, Number(entry.total).toLocaleString('en')));
+    }
     facts.append(element('dt', null, 'Refreshed'), element('dd', null, when(state.fetchedAt)));
     wrap.append(facts);
   }
@@ -136,8 +139,9 @@ function render(state, error) {
       element(
         'p',
         'note',
-        'Every saved token is asked and the highest count kept: a token that sees fewer repositories ' +
-          'counts fewer, never more, so the largest answer is the most complete one.',
+        'Every saved token is asked for this year and the three before it in one request, and the ' +
+          'highest count for this year is kept, its past years with it: a token that sees fewer ' +
+          'repositories counts fewer, never more, so the largest answer is the most complete one.',
       ),
     );
 

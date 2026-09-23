@@ -29,6 +29,7 @@ import {
   fetchContributions,
   sanitizeSettings as contribSettings,
   yearWindow,
+  yearWindows,
 } from './lib/contributions.js';
 
 const CONFIG_KEY = 'sync';
@@ -681,11 +682,12 @@ async function subscribeNews(repo, subscribe) {
 }
 
 /**
- * The year's contributions — the number the profile prints — are a snapshot in storage.local that
- * the menu paints from instantly, and a refresh that runs when the menu asks with a snapshot older
- * than five minutes, or one from another year. No alarm: nothing outside the menu shows it, so
- * nothing needs it fresh before the key is pressed. Every token is asked, since a fine-grained one
- * sees a single owner's repositories and counts accordingly, and the highest count is kept.
+ * The year's contributions — the number the profile prints — and the three whole years before it
+ * are a snapshot in storage.local that the menu paints from instantly, and a refresh that runs when
+ * the menu asks with a snapshot older than five minutes, or one from another year. No alarm:
+ * nothing outside the menu shows them, so nothing needs them fresh before the key is pressed.
+ * Every token is asked, since a fine-grained one sees a single owner's repositories and counts
+ * accordingly, and the highest count for this year is kept, its past years with it.
  */
 let contribRefresh = null;
 
@@ -719,13 +721,13 @@ function refreshContributions() {
     const tokens = await loadTokens();
     if (tokens.length === 0) return null;
     const previous = await readContribCache();
-    const window = yearWindow();
+    const windows = yearWindows();
 
     const results = [];
     const failures = [];
     for (const entry of tokens) {
       try {
-        results.push(await fetchContributions(entry.secret, window));
+        results.push(await fetchContributions(entry.secret, windows));
       } catch (error) {
         failures.push(String(error.message ?? error));
       }
@@ -735,15 +737,16 @@ function refreshContributions() {
     let next;
     if (!best) {
       next = {
-        ...(previous ?? { year: window.year, total: null, login: null, fetchedAt: null }),
+        ...(previous ?? { year: windows[0].year, total: null, login: null, years: [], fetchedAt: null }),
         error: failures[0] ?? 'GitHub did not answer.',
         failedAt: now(),
       };
     } else {
       next = {
-        year: window.year,
+        year: windows[0].year,
         total: best.total,
         login: best.login || null,
+        years: best.years ?? [],
         fetchedAt: now(),
         error: null,
         failedAt: null,
@@ -762,7 +765,8 @@ function refreshContributions() {
  * Everything the menu and the settings card need in one answer. `show` is the whole decision for
  * the menu: no token or switched off means no number, not a shimmer asking for a token. Only a
  * snapshot of this year is presented — last year's count under this year's label would be wrong,
- * so on New Year's Day it is a shimmer and a refresh.
+ * so on New Year's Day it is a shimmer and a refresh. `past` is the whole years before this one,
+ * newest first, for the hover.
  */
 async function contributionsState() {
   const [settings, config, cache] = await Promise.all([readContribSettings(), readConfig(), readContribCache()]);
@@ -777,8 +781,10 @@ async function contributionsState() {
     stale: contribIsStale(cache, at),
     year,
     total: Number.isFinite(current?.total) ? current.total : null,
+    past: (current?.years ?? [])
+      .filter((entry) => Number.isFinite(entry?.total) && Number.isInteger(entry?.year) && entry.year < year)
+      .map((entry) => ({ year: entry.year, total: entry.total })),
     login: current?.login ?? null,
-    url: current?.login ? `https://github.com/${encodeURIComponent(current.login)}` : null,
     fetchedAt: current?.fetchedAt ?? null,
     fetchedAgo: current?.fetchedAt ? age(current.fetchedAt, at) : '',
     error: cache?.error ?? null,

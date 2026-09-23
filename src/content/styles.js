@@ -238,8 +238,8 @@ window.__gitchop.CSS = `
  * is a reel: a strip of glyphs sliding behind a window one digit tall, so a change rolls rather
  * than blinks and the first paint rolls up from nought once the panel is on screen. The strip
  * moves by a percentage of its own height, so the digit's size is written once, here, and the
- * head stays exactly as tall as its title. The whole thing is a link to the profile, where the
- * calendar behind the number is.
+ * head stays exactly as tall as its title. It is not a link: hovering it hangs the years before
+ * this one beneath, and that is all.
  */
 .gc-count {
   margin-left: auto;
@@ -248,8 +248,8 @@ window.__gitchop.CSS = `
   align-items: center;
   gap: 7px;
   color: inherit;
-  text-decoration: none;
   white-space: nowrap;
+  cursor: default;
 }
 
 .gc-odo {
@@ -301,11 +301,34 @@ window.__gitchop.CSS = `
   display: none;
 }
 
-a.gc-count[href]:hover .gc-odo {
-  color: #fff;
+/* Lit while the mouse is on it, since the years before this one hang under it then. */
+.gc-count:hover .gc-count-label {
+  color: var(--gc-text);
 }
 
-a.gc-count[href]:hover .gc-count-label {
+/*
+ * The years before this one, under the number and right edge to right edge with it: a year and its
+ * total per line, the total spaced as the reels space theirs. It shares the pull request title's
+ * card and settles into place the same way; the script sets right and top.
+ */
+.gc-pop--years {
+  padding: 7px 10px 6px;
+}
+
+.gc-years {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 16px;
+  font: 400 11px/1.3 var(--gc-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.gc-year {
+  color: var(--gc-dim);
+}
+
+.gc-year-total {
+  text-align: right;
   color: var(--gc-text);
 }
 

@@ -61,25 +61,28 @@ window.__gitchop = window.__gitchop || {};
 
     /**
      * The year's contributions beside the title, when the background said so — a token, and the
-     * switch on. The reels are for looking at; the exact figure goes on the link for anything that
-     * reads it. It is a link to the profile once a snapshot says whose, and before that only the
-     * place where a number will be.
+     * switch on. The reels are for looking at; the exact figures go on the element for anything
+     * that reads it, this year's and the past ones both. It is not a link: hovering it hangs the
+     * years before this one beneath, and that is all it does.
      */
     let count = null;
     if (contributions?.show) {
-      const link = node('a', 'gc-count');
+      const element = node('span', 'gc-count');
+      element.setAttribute('role', 'img');
       const odometer = gc.createOdometer();
       const label = node('span', 'gc-count-label');
-      link.append(odometer.element, label);
-      link.addEventListener('click', (event) => {
-        if (!link.getAttribute('href')) return;
-        // Let the anchor navigate, but get the overlay out of the way of the page load.
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
-        cancelSearch();
-        onClose();
-      });
-      count = { element: link, odometer, label };
-      head.append(link);
+      element.append(odometer.element, label);
+      const pop = node('div', 'gc-pop gc-pop--years');
+      pop.dataset.shown = 'false';
+      pop.dataset.below = 'true';
+      pop.setAttribute('role', 'tooltip');
+      pop.setAttribute('aria-hidden', 'true');
+      const years = node('div', 'gc-years');
+      pop.append(years);
+      element.addEventListener('mouseenter', () => showYears());
+      element.addEventListener('mouseleave', () => hideYears());
+      count = { element, odometer, label, pop, years, past: [] };
+      head.append(element);
     }
 
     const filter = node('input', 'gc-filter');
@@ -97,6 +100,8 @@ window.__gitchop = window.__gitchop || {};
     foot.append(keys);
 
     panel.append(head, filter, list, foot);
+    // The years hang from the panel, not the head, so they can lie over the filter beneath.
+    if (count) panel.append(count.pop);
 
     /**
      * The panel and the columns beside it rise into the cut as one slab, so the stage is what the
@@ -862,11 +867,38 @@ window.__gitchop = window.__gitchop || {};
       refreshNews();
     }
 
+    /** Thousands spaced as the reels space them, for the years listed under the number. */
+    function spaced(total) {
+      return String(total).replace(/\B(?=(\d{3})+$)/g, '\u2009');
+    }
+
+    function hideYears() {
+      if (!count) return;
+      count.pop.dataset.shown = 'false';
+      count.pop.setAttribute('aria-hidden', 'true');
+    }
+
+    /**
+     * The years before this one, under the number, right edge to right edge with it, while the
+     * mouse is on it. Nothing to hang while the snapshot has no past years — before the first
+     * refresh, or on an account made this year.
+     */
+    function showYears() {
+      if (!count || count.past.length === 0 || count.element.hidden) return;
+      const box = panel.getBoundingClientRect();
+      const at = count.element.getBoundingClientRect();
+      count.pop.style.right = `${Math.round(box.right - at.right)}px`;
+      count.pop.style.top = `${Math.round(at.bottom - box.top + 8)}px`;
+      count.pop.dataset.shown = 'true';
+      count.pop.setAttribute('aria-hidden', 'false');
+    }
+
     /**
      * The number as it stands. The total is null until a snapshot exists, which is the cue for a
      * shimmer where the digits will be; null with a failure on record — the refresh refused, and
      * there was nothing before it — is no number at all, and the settings page says why. The year
-     * is the snapshot's, so a count is never labelled with a year it does not cover.
+     * is the snapshot's, so a count is never labelled with a year it does not cover. The past years
+     * are filled in here and hung on hover, and read out with this year's for anything that listens.
      */
     function renderCount() {
       if (!count) return;
@@ -874,18 +906,30 @@ window.__gitchop = window.__gitchop || {};
       const known = Number.isFinite(data.total);
       if (!known && data.error) {
         count.element.hidden = true;
+        hideYears();
         return;
       }
       count.element.hidden = false;
       const year = data.year ?? new Date().getFullYear();
       count.label.textContent = `contributions in ${year}`;
       count.odometer.set(known ? data.total : null);
-      if (!known) return;
-      count.element.setAttribute('aria-label', `${data.total.toLocaleString('en')} contributions in ${year}`);
-      if (gc.isSafeUrl(data.url)) {
-        count.element.href = data.url;
-        count.element.title = data.url;
+
+      count.past = known ? (data.past ?? []).filter((entry) => Number.isFinite(entry?.total)) : [];
+      count.years.textContent = '';
+      for (const entry of count.past) {
+        count.years.append(node('span', 'gc-year', String(entry.year)), node('span', 'gc-year-total', spaced(entry.total)));
       }
+      if (count.past.length === 0) hideYears();
+
+      if (!known) {
+        count.element.setAttribute('aria-label', `contributions in ${year}, not counted yet`);
+        return;
+      }
+      const spoken = [
+        `${data.total.toLocaleString('en')} contributions in ${year}`,
+        ...count.past.map((entry) => `${entry.total.toLocaleString('en')} in ${entry.year}`),
+      ];
+      count.element.setAttribute('aria-label', spoken.join('; '));
     }
 
     /**
@@ -1197,8 +1241,8 @@ window.__gitchop = window.__gitchop || {};
     }
 
     // Clicking dead space in either column must not drop focus to the page, where GitHub's
-    // single-key shortcuts would start listening again. An anchor without an href — the count
-    // before its snapshot has landed — is dead space too.
+    // single-key shortcuts would start listening again. The count in the head is dead space too:
+    // it is for looking at.
     stage.addEventListener('mousedown', (event) => {
       if (event.target.closest?.('input, button, a[href]')) return;
       event.preventDefault();

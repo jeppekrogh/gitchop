@@ -2,6 +2,9 @@ const GRAPHQL = 'https://api.github.com/graphql';
 
 export const SETTINGS_KEY = 'contributions';
 
+/** How many whole years before this one are asked for, for the hover. */
+export const YEARS_BACK = 3;
+
 /** One entry per control on the settings card; `value` is the default. */
 export const SWITCHES = [
   {
@@ -26,51 +29,76 @@ export function sanitizeSettings(raw) {
 }
 
 /**
- * The year as the person lives it — local time, which is also the clock GitHub's own calendar has
- * drawn its squares by since it learned about time zones. `from` is the first instant of January
- * the 1st, `to` is now; GitHub allows at most a year between them, which a calendar year never
+ * A calendar year as the person lives it — local time, which is also the clock GitHub's own
+ * calendar has drawn its squares by since it learned about time zones. `from` is the first instant
+ * of January the 1st; `to` is now for this year and the last instant of December the 31st for a
+ * year that is over. GitHub allows at most a year between the two, which a calendar year never
  * exceeds. Half past midnight on New Year's Day is the new year here even while UTC is still on
  * the old one.
  */
-export function yearWindow(now = Date.now()) {
+export function yearWindow(now = Date.now(), back = 0) {
   const at = new Date(now);
-  const year = at.getFullYear();
-  return { year, from: new Date(year, 0, 1, 0, 0, 0, 0).toISOString(), to: at.toISOString() };
+  const year = at.getFullYear() - back;
+  const from = new Date(year, 0, 1, 0, 0, 0, 0);
+  const to = back === 0 ? at : new Date(new Date(year + 1, 0, 1, 0, 0, 0, 0).valueOf() - 1);
+  return { year, from: from.toISOString(), to: to.toISOString() };
+}
+
+/** This year and the `back` before it, newest first. */
+export function yearWindows(now = Date.now(), back = YEARS_BACK) {
+  return Array.from({ length: back + 1 }, (_, index) => yearWindow(now, index));
 }
 
 /**
- * One number, and whose it is. The calendar total is what the profile page prints under the graph,
- * so it is the figure the person already knows; the breakdown into commits, reviews and the rest
- * does not add up to it exactly and is left out rather than explained.
+ * One request for every year: each is its own aliased field, so a year GitHub refuses comes back
+ * null beside the others rather than sinking the answer. The calendar total is what the profile
+ * page prints under the graph, so it is the figure the person already knows; the breakdown into
+ * commits, reviews and the rest does not add up to it exactly and is left out rather than
+ * explained. The account's birthday says which of the years asked for existed at all.
  */
-export function buildQuery(window) {
+export function buildQuery(windows) {
+  const params = windows.map((_, index) => `$from${index}: DateTime!, $to${index}: DateTime!`).join(', ');
+  const fields = windows
+    .map((_, index) => `    y${index}: contributionsCollection(from: $from${index}, to: $to${index}) { contributionCalendar { totalContributions } }`)
+    .join('\n');
+  const variables = {};
+  windows.forEach((window, index) => {
+    variables[`from${index}`] = window.from;
+    variables[`to${index}`] = window.to;
+  });
   return {
-    query: `
-query($from: DateTime!, $to: DateTime!) {
-  viewer {
-    login
-    contributionsCollection(from: $from, to: $to) {
-      contributionCalendar { totalContributions }
-    }
-  }
-}`.trim(),
-    variables: { from: window.from, to: window.to },
+    query: `query(${params}) {\n  viewer {\n    login\n    createdAt\n${fields}\n  }\n}`,
+    variables,
   };
 }
 
-/** What one token's answer becomes. Null when GitHub sent no calendar, which is a failure to the caller. */
-export function shapeContributions(data) {
+/**
+ * What one token's answer becomes: whose it is, this year's total, and every year that came back,
+ * newest first. This year missing is a failure; a past year missing is a year left out. A year
+ * before the account existed is not a year of nought, it is no year at all, so it is left out too.
+ */
+export function shapeContributions(data, windows) {
   const viewer = data?.viewer;
-  const total = Number(viewer?.contributionsCollection?.contributionCalendar?.totalContributions);
-  if (!viewer || typeof viewer !== 'object' || !Number.isFinite(total)) return null;
-  return { login: String(viewer.login ?? '').trim(), total: Math.max(0, Math.round(total)) };
+  if (!viewer || typeof viewer !== 'object') return null;
+  const totalOf = (index) => Number(viewer[`y${index}`]?.contributionCalendar?.totalContributions);
+  if (!Number.isFinite(totalOf(0))) return null;
+
+  const since = new Date(viewer.createdAt ?? Number.NaN).getFullYear();
+  const years = [];
+  (windows ?? []).forEach((window, index) => {
+    const total = totalOf(index);
+    if (!Number.isFinite(total)) return;
+    if (Number.isFinite(since) && window.year < since) return;
+    years.push({ year: window.year, total: Math.max(0, Math.round(total)) });
+  });
+  return { login: String(viewer.login ?? '').trim(), total: years[0]?.total ?? Math.max(0, Math.round(totalOf(0))), years };
 }
 
 /**
  * A classic token sees every repository the account can reach and a fine-grained one sees a single
- * owner's, so two tokens can count the same year differently. The highest count is the closest to
- * what the profile shows: a repository a token cannot see is left out of its count, never counted
- * twice, so the largest answer is the most complete one.
+ * owner's, so two tokens can count the same year differently. The highest count for this year is
+ * the closest to what the profile shows: a repository a token cannot see is left out of its count,
+ * never counted twice, so the largest answer is the most complete one — and its past years go with it.
  */
 export function bestOf(results) {
   let best = null;
@@ -94,8 +122,8 @@ function explain(status, errors) {
   return 'GitHub did not answer.';
 }
 
-/** One token's count for the window. Throws with a sentence the settings page can show as it is. */
-export async function fetchContributions(token, window) {
+/** One token's count for every window. Throws with a sentence the settings page can show as it is. */
+export async function fetchContributions(token, windows) {
   const response = await fetch(GRAPHQL, {
     method: 'POST',
     headers: {
@@ -104,7 +132,7 @@ export async function fetchContributions(token, window) {
       'Content-Type': 'application/json',
       'X-GitHub-Api-Version': '2022-11-28',
     },
-    body: JSON.stringify(buildQuery(window)),
+    body: JSON.stringify(buildQuery(windows)),
   });
 
   let payload = null;
@@ -114,7 +142,7 @@ export async function fetchContributions(token, window) {
     payload = null;
   }
 
-  const shaped = shapeContributions(payload?.data);
+  const shaped = shapeContributions(payload?.data, windows);
   if (!response.ok || !shaped) throw new Error(explain(response.status, payload?.errors));
   return shaped;
 }
