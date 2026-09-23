@@ -306,32 +306,6 @@ window.__gitchop.CSS = `
   color: var(--gc-text);
 }
 
-/*
- * The years before this one, under the number and right edge to right edge with it: a year and its
- * total per line, the total spaced as the reels space theirs. It shares the pull request title's
- * card and settles into place the same way; the script sets right and top.
- */
-.gc-pop--years {
-  padding: 7px 10px 6px;
-}
-
-.gc-years {
-  display: grid;
-  grid-template-columns: auto auto;
-  gap: 4px 16px;
-  font: 400 11px/1.3 var(--gc-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.gc-year {
-  color: var(--gc-dim);
-}
-
-.gc-year-total {
-  text-align: right;
-  color: var(--gc-text);
-}
-
 .gc-filter {
   width: 100%;
   border: 0;
@@ -844,5 +818,21 @@ a.gc-pop-item:hover {
 .gc-pop-item--more .gc-pop-title {
   font: 400 11px/1.2 var(--gc-mono);
   color: var(--gc-dim);
+}
+
+/*
+ * The years before this one, under the number in the head and right edge to right edge with it:
+ * the news popover's card and rows, a year where the title goes and its total where the detail
+ * goes — spaced as the reels space theirs, and in the text colour, since here the figure is the
+ * point. It hangs from the same bridge but takes no pointer: there is nothing in it to click, so it
+ * is a tooltip that goes when the mouse leaves the number. The script sets right and top.
+ */
+.gc-pop--years[data-shown="true"] {
+  pointer-events: none;
+}
+
+.gc-pop--years .gc-pop-detail {
+  font-size: 11px;
+  color: var(--gc-text);
 }
 `;

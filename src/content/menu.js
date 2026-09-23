@@ -72,12 +72,14 @@ window.__gitchop = window.__gitchop || {};
       const odometer = gc.createOdometer();
       const label = node('span', 'gc-count-label');
       element.append(odometer.element, label);
-      const pop = node('div', 'gc-pop gc-pop--years');
+      // The news popover's card and rows, hung from the same bridge — but a tooltip: nothing in it
+      // to click, so it takes no pointer and goes when the mouse leaves the number.
+      const pop = node('div', 'gc-pop gc-pop--list gc-pop--years');
       pop.dataset.shown = 'false';
       pop.dataset.below = 'true';
       pop.setAttribute('role', 'tooltip');
       pop.setAttribute('aria-hidden', 'true');
-      const years = node('div', 'gc-years');
+      const years = node('div', 'gc-pop-card');
       pop.append(years);
       element.addEventListener('mouseenter', () => showYears());
       element.addEventListener('mouseleave', () => hideYears());
@@ -880,15 +882,16 @@ window.__gitchop = window.__gitchop || {};
 
     /**
      * The years before this one, under the number, right edge to right edge with it, while the
-     * mouse is on it. Nothing to hang while the snapshot has no past years — before the first
-     * refresh, or on an account made this year.
+     * mouse is on it. Flush under the number as the news popover is under its chip — the bridge's
+     * padding is the visible gap. Nothing to hang while the snapshot has no past years: before the
+     * first refresh, or on an account made this year.
      */
     function showYears() {
       if (!count || count.past.length === 0 || count.element.hidden) return;
       const box = panel.getBoundingClientRect();
       const at = count.element.getBoundingClientRect();
       count.pop.style.right = `${Math.round(box.right - at.right)}px`;
-      count.pop.style.top = `${Math.round(at.bottom - box.top + 8)}px`;
+      count.pop.style.top = `${Math.round(at.bottom - box.top)}px`;
       count.pop.dataset.shown = 'true';
       count.pop.setAttribute('aria-hidden', 'false');
     }
@@ -916,9 +919,9 @@ window.__gitchop = window.__gitchop || {};
 
       count.past = known ? (data.past ?? []).filter((entry) => Number.isFinite(entry?.total)) : [];
       count.years.textContent = '';
-      for (const entry of count.past) {
-        count.years.append(node('span', 'gc-year', String(entry.year)), node('span', 'gc-year-total', spaced(entry.total)));
-      }
+      // The same line as a pull request or a commit in the news: the year where the title goes,
+      // its total where the detail goes, and no URL, so it is a line and not a link.
+      for (const entry of count.past) count.years.append(popLine(String(entry.year), spaced(entry.total), ''));
       if (count.past.length === 0) hideYears();
 
       if (!known) {
