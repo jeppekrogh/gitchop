@@ -20,15 +20,15 @@ it from.
   before under its own alias, so a year GitHub refuses is a year left out rather than a failed
   answer — and the highest count for this year wins, its past years with it, since a fine-grained
   token sees fewer repositories than a classic one and may count fewer. Years before the account
-  existed are left out rather than shown as nought. A **Contributions** card in Settings has the
-  switch, the numbers, when they were refreshed, and a **Refresh now**. Removing the last token
-  deletes the snapshot with the rest. (#7)
+  existed are left out rather than shown as nought. A switch under Features in Settings turns it
+  off. Removing the last token deletes the snapshot with the rest. (#7)
 - **The settings page is paged.** Eight cards in one column had become a long scroll, so a rail on
-  the left now names every page under three headings — General: Chop effect. Menu: Links, with the
-  placeholders under the links; Pull requests; News; Contributions. GitHub: Token, Private
-  repository search — and one page stands on the right at a time, Links to begin with. The page
-  remembers the card it was left on, in the address and for the next visit; up and down walk the
-  rail. A narrow window puts the rail above the card as a row instead. Each page is three parts:
+  the left now names every page under three headings — General: Features, one switch each for the
+  pull requests column, the news column and the contributions count, with room for more; Chop
+  effect. Menu: Links, with the placeholders under the links; Pull requests; News. GitHub: Token,
+  Private repository search — and one page stands on the right at a time, Links to begin with. The
+  page remembers the card it was left on, in the address and for the next visit; up and down walk
+  the rail. A narrow window puts the rail above the card as a row instead. Each page is three parts:
   what the feature is, above the box; the settings themselves, in it; and what is worth knowing
   about them as they stand, below it — so only controls sit inside a border. Every note is shorter,
   the token card's list of every call made with a token is a link to the privacy notes that carry

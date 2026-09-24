@@ -30,18 +30,33 @@
       <div class="pages">
         <nav class="rail" aria-label="Settings pages" data-default="links">
           <span class="rail-group">General</span>
+          <button type="button" class="rail-item" data-page="features">Features</button>
           <button type="button" class="rail-item" data-page="effects">Chop effect</button>
           <span class="rail-group">Menu</span>
           <button type="button" class="rail-item" data-page="links">Links</button>
           <button type="button" class="rail-item" data-page="pulls">Pull requests</button>
           <button type="button" class="rail-item" data-page="news">News</button>
-          <button type="button" class="rail-item" data-page="contributions">Contributions</button>
           <span class="rail-group">GitHub</span>
           <button type="button" class="rail-item" data-page="token">Token</button>
           <button type="button" class="rail-item" data-page="index">Private repository search</button>
         </nav>
 
         <div class="page">
+          <div class="pane" data-page="features" hidden>
+            <p class="intro">
+              What the menu shows besides the links: the pull requests column, the news column, and
+              the contributions count in its head. Each has its own page under Menu.
+            </p>
+            <section class="card">
+              <div class="card-head">
+                <h2>Features</h2>
+                <span class="status" id="features-status" role="status" aria-live="polite"></span>
+              </div>
+              <div id="features"></div>
+            </section>
+            <div class="notes" id="features-notes"></div>
+          </div>
+
           <div class="pane" data-page="links" hidden>
             <p class="intro">The links the menu shows, top to bottom.</p>
             <section class="card">
@@ -140,21 +155,6 @@
               <div id="news"></div>
             </section>
             <div class="notes" id="news-notes"></div>
-          </div>
-
-          <div class="pane" data-page="contributions" hidden>
-            <p class="intro">
-              The number your profile shows for the year, in the head of the menu beside the title.
-              Hover it for the three years before.
-            </p>
-            <section class="card">
-              <div class="card-head">
-                <h2>Contributions</h2>
-                <span class="status" id="contributions-status" role="status" aria-live="polite"></span>
-              </div>
-              <div id="contributions"></div>
-            </section>
-            <div class="notes" id="contributions-notes"></div>
           </div>
         </div>
       </div>

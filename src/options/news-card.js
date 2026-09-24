@@ -1,5 +1,5 @@
 import { api } from '../lib/links.js';
-import { HOUR, SWITCHES, isRepoName, proseText } from '../lib/news.js';
+import { HOUR, isRepoName, proseText } from '../lib/news.js';
 
 const host = document.getElementById('news');
 const statusEl = document.getElementById('news-status');
@@ -74,29 +74,6 @@ async function apply(message, word) {
   flash(word);
   current = result;
   render(result);
-}
-
-/** One switch per setting, in the same dress as the chop effect's own. */
-function switchRow(spec, state) {
-  const row = element('div', 'slider slider-toggle');
-  row.title = spec.hint;
-
-  const label = element('span', 'slider-label', spec.label);
-  label.id = `news-${spec.id}-label`;
-
-  const toggle = element('button', 'switch');
-  toggle.type = 'button';
-  toggle.setAttribute('role', 'switch');
-  toggle.setAttribute('aria-labelledby', label.id);
-  const on = state.settings[spec.id] === 1;
-  toggle.dataset.on = String(on);
-  toggle.setAttribute('aria-checked', String(on));
-  toggle.addEventListener('click', () =>
-    guard(toggle, () => apply({ type: 'gitchop:news:settings', patch: { [spec.id]: on ? 0 : 1 } }, on ? 'off' : 'on')),
-  );
-
-  row.append(label, toggle, element('output', null, on ? 'on' : 'off'));
-  return row;
 }
 
 function clock(hour) {
@@ -214,11 +191,12 @@ function render(state, error) {
     return;
   }
 
+  // The column's own switch is under Features with the other columns'; the hour is here.
   const controls = element('div', 'sliders');
   controls.dataset.off = String(state.settings.enabled !== 1);
-  for (const spec of SWITCHES) controls.append(switchRow(spec, state));
   controls.append(hourRow(state));
   wrap.append(controls);
+  if (state.settings.enabled !== 1) notes.append(element('p', 'note', 'The column is switched off under Features.'));
 
   if (state.repos.length > 0) {
     wrap.append(repoList(state));
