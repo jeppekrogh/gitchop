@@ -347,19 +347,63 @@ dl.tokens {
   letter-spacing: 0.06em;
 }
 
-.scopes {
-  list-style: none;
+.caution {
   display: grid;
-  gap: 5px;
-  padding: 0 18px;
+  gap: 6px;
+  margin: 0 18px;
+  padding: 10px 12px;
+  border: 1px solid #c0473b;
   color: var(--dim);
-  font-size: 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
 }
 
-.scopes li {
-  display: flex;
-  gap: 7px;
-  align-items: baseline;
+.caution b {
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ffb3a8;
+}
+
+.caution p {
+  max-width: 60ch;
+}
+
+.caution .link {
+  justify-self: start;
+}
+
+.fineprint {
+  margin: 0 18px;
+  color: var(--dim);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.fineprint summary {
+  cursor: pointer;
+  list-style: none;
+  font: 500 10.5px/1.6 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.fineprint summary::-webkit-details-marker {
+  display: none;
+}
+
+.fineprint summary::before {
+  content: "▸ ";
+  color: var(--accent);
+}
+
+.fineprint[open] summary::before {
+  content: "▾ ";
+}
+
+.fineprint p {
+  padding-top: 6px;
+  max-width: 60ch;
 }
 
 .card-warn::before {
@@ -372,14 +416,32 @@ dl.tokens {
 
 .recipe {
   display: grid;
+  gap: 10px;
+}
+
+.recipe-head {
+  display: flex;
   gap: 8px;
+  align-items: center;
+  padding: 2px 18px 0;
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.recipe-tag {
+  font-size: 9.5px;
+  color: var(--dim);
+  border: 1px solid var(--line);
+  padding: 3px 5px;
 }
 
 .steps {
   display: grid;
-  gap: 7px;
+  gap: 12px;
   margin: 0;
-  padding: 0 18px 0 36px;
+  padding: 0 18px 0 40px;
   color: var(--dim);
   font-size: 12.5px;
   line-height: 1.5;
@@ -391,16 +453,59 @@ dl.tokens {
   font-size: 11px;
 }
 
-.steps b {
+.step {
+  display: grid;
+  gap: 5px;
+}
+
+.step-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.step-row b {
+  flex: none;
+  width: 48px;
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--text);
-  font-weight: 500;
+}
+
+.step-row input {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font: 400 12px/1.2 var(--mono);
+  padding: 7px 10px;
+  outline: none;
+  min-width: 0;
+}
+
+.step-row input:focus {
+  border-color: var(--accent);
+}
+
+.step-row .owner {
+  width: 20em;
+  max-width: 100%;
+}
+
+.step-row input[type="password"] {
+  flex: 1;
+}
+
+.step-hint {
+  max-width: 60ch;
 }
 
 .tokens {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1px;
-  padding: 14px 18px 0;
+  padding: 0 18px;
 }
 
 .token {
@@ -448,12 +553,6 @@ dl.tokens {
   color: #ffb3a8;
   border: 1px solid #c0473b;
   padding: 3px 5px;
-}
-
-.add-token {
-  display: grid;
-  gap: 8px;
-  padding-top: 6px;
 }
 
 .sliders {
