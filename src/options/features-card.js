@@ -1,4 +1,4 @@
-import { api } from '../lib/links.js';
+import { PANEL_SWITCHES as PANEL, api } from '../lib/links.js';
 import { SWITCHES as PULLS } from '../lib/pulls.js';
 import { SWITCHES as NEWS } from '../lib/news.js';
 import { SWITCHES as CONTRIBUTIONS } from '../lib/contributions.js';
@@ -16,6 +16,7 @@ const notes = document.getElementById('features-notes');
  * once its feature is off, and redraws; the news page follows storage on its own.
  */
 const FEATURES = [
+  { id: 'panel', spec: PANEL.find((spec) => spec.id === 'enabled'), ask: 'gitchop:panel', set: 'gitchop:panel:settings', needsToken: false },
   { id: 'pulls', spec: PULLS.find((spec) => spec.id === 'enabled'), ask: 'gitchop:pulls', set: 'gitchop:pulls:settings', needsToken: true, after: loadPulls },
   { id: 'news', spec: NEWS.find((spec) => spec.id === 'enabled'), ask: 'gitchop:news', set: 'gitchop:news:settings', needsToken: false },
   { id: 'contributions', spec: CONTRIBUTIONS.find((spec) => spec.id === 'enabled'), ask: 'gitchop:contributions', set: 'gitchop:contributions:settings', needsToken: true },

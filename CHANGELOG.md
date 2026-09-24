@@ -59,20 +59,23 @@ it from.
   existed are left out rather than shown as nought. A switch under Panels in Settings turns it off.
   Removing the last token deletes the snapshot with the rest. (#7)
 - **The settings page is paged.** Eight cards in one column had become a long scroll, so a rail on
-  the left now names every page under three headings — General: Panels, one switch each for the pull
-  requests column, the news column and the contributions count, with room for more; The chop. Menu:
-  Links, with the placeholders under the links; Pull requests; News. GitHub: Tokens, Index, Backup —
-  and one page stands on the right at a time, Links to begin with. The page remembers the card it
-  was left on, in the address and for the next visit; up and down walk the rail. A narrow window
-  puts the rail above the card as a row instead. Each page has its own headline, with the status
-  corner beside it, and a line under it saying what the feature is; then the box, with the settings
-  themselves and nothing else, not even a title bar; then, below it, what is worth knowing about
-  them as they stand — so only controls sit inside a border. Every note is shorter, the token card's
-  list of every call made with a token is a link to the privacy notes that carry it, and the notes
-  that pointed at a card "above" or "below" now name its page. The pages that can do nothing without
-  a token — Pull requests, Index, Backup — are dimmed on the rail until one is saved, and each shows
-  one line saying so with the way to the Token page in place of controls that could only fail. Every
-  card stays in the document, only hidden, so nothing about how they load or save has changed. (#3)
+  the left now names every page under three headings — General: Panels, one switch each for the
+  links panel, the pull requests column, the news column and the contributions count, with room for
+  more; The chop. The links panel — the links and the search — can be switched off too: the menu is
+  then only the columns you have on, the news alone if that is all you want, and with nothing else
+  on the panel stays. Menu: Links, with the placeholders under the links; Pull requests; News.
+  GitHub: Tokens, Index, Backup — and one page stands on the right at a time, Links to begin with.
+  The page remembers the card it was left on, in the address and for the next visit; up and down
+  walk the rail. A narrow window puts the rail above the card as a row instead. Each page has its
+  own headline, with the status corner beside it, and a line under it saying what the feature is;
+  then the box, with the settings themselves and nothing else, not even a title bar; then, below it,
+  what is worth knowing about them as they stand — so only controls sit inside a border. Every note
+  is shorter, the token card's list of every call made with a token is a link to the privacy notes
+  that carry it, and the notes that pointed at a card "above" or "below" now name its page. The
+  pages that can do nothing without a token — Pull requests, Index, Backup — are dimmed on the rail
+  until one is saved, and each shows one line saying so with the way to the Token page in place of
+  controls that could only fail. Every card stays in the document, only hidden, so nothing about how
+  they load or save has changed. (#3)
 
 ## 2.5.0
 
