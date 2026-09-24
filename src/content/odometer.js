@@ -12,12 +12,14 @@ window.__gitchop = window.__gitchop || {};
   const GAP = 800;
   /** How long a digit takes to tick on when a number already showing changes. */
   const TICK = 600;
+  /** How fast a reel turns while it spins, in digits a second: slow enough to read them going past. */
+  const PACE = 8;
   /**
-   * How long one whole turn takes at spinning pace: a reel that stops later turns more times on
-   * the way, about one a second, so the whole row spins at much the same, unhurried speed.
+   * How many whole turns reel `i` makes before stopping on `digit`: as many as bring its travel, at
+   * the pace, nearest to the time it has — none for the first, which stops almost at once, and more
+   * the later a reel stops, so the whole row turns at much the same unhurried speed.
    */
-  const TURN = 1000;
-  const turnsFor = (i) => Math.max(1, Math.round((FIRST + i * GAP) / TURN));
+  const turnsFor = (i, digit) => Math.max(0, Math.round(((PACE * (FIRST + i * GAP)) / 1000 - (BLANK + digit)) / DIGITS.length));
   /** A spin runs near enough flat out and brakes at the end; a tick eases out from the start. */
   const SPIN_EASE = 'cubic-bezier(0.35, 0.35, 0.6, 1)';
   const TICK_EASE = 'cubic-bezier(0.2, 0.7, 0.15, 1)';
@@ -39,13 +41,14 @@ window.__gitchop = window.__gitchop || {};
    * A number's first appearance is a slot machine's: every reel starts spinning the moment the
    * panel is up and they stop one at a time, left to right — the first as good as at once, each
    * to its right a beat after the one before. A reel that stops later turns more times on the way,
-   * about one a second, so they all spin at much the same pace. A number arriving while they are still turning keeps
+   * so they all turn at much the same slow pace. A number arriving while they are still turning keeps
    * every stop where it was and only changes the digit each reel stops on. A change to a number
    * already showing is a tick instead — the digits that moved roll straight to where they are
    * going, always upward. Reduced motion has no reels to speak of: the digits are placed.
    *
    * The strip is a blank and then as many runs of the digits as the last reel needs turns, and one
-   * more, so it has a whole run left to tick into once it has landed.
+   * more, so it has a whole run left to tick into once it has landed — two at the least, so a nine
+   * can always tick over.
    * It moves by a percentage of its own height, so no pixel size is written here and the
    * stylesheet alone decides how tall a digit is. A reel that has rolled past the first run is put
    * back into it, without moving, once its roll has ended, so there is always room to roll up again.
@@ -93,7 +96,7 @@ window.__gitchop = window.__gitchop || {};
     function build(count, from) {
       element.textContent = '';
       reels = [];
-      const runs = turnsFor(count - 1) + 1;
+      const runs = Math.max(2, turnsFor(count - 1, 0) + 1);
       cells = BLANK + DIGITS.length * runs;
       const start = from.slice(-count).padStart(count, ' ');
       for (let i = 0; i < count; i += 1) {
@@ -131,7 +134,7 @@ window.__gitchop = window.__gitchop || {};
         }
         let at = Number(reel.dataset.at) || 0;
         const landAt = Number(reel.dataset.landAt);
-        const stop = cellOf(wanted) + DIGITS.length * turnsFor(i);
+        const stop = cellOf(wanted) + DIGITS.length * turnsFor(i, wanted);
 
         if (spin && at < BLANK) {
           const duration = FIRST + i * GAP;
