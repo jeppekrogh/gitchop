@@ -1,5 +1,5 @@
 /**
- * One page at a time. The rail names every page under two headings, the page chosen is the only
+ * One page at a time. The rail names every page under three headings, the page chosen is the only
  * one in the layout, and the choice is kept — in the hash, so a reload lands where it left off,
  * and in localStorage, so the next visit does too. Every page stays in the document, hidden,
  * because each card's module finds its elements when it loads. The rail is buttons rather than anchors:
@@ -37,9 +37,9 @@ function remember(id) {
   }
 }
 
-/** The page named, or the one remembered, or the first; says which it settled on. */
+/** The page named, or the one remembered, or the rail's default, or the first; says which it settled on. */
 export function show(id) {
-  const page = known(id) ?? remembered() ?? items[0].dataset.page;
+  const page = known(id) ?? remembered() ?? known(rail.dataset.default) ?? items[0].dataset.page;
   for (const pane of panes) pane.hidden = pane.dataset.page !== page;
   for (const item of items) {
     if (item.dataset.page === page) item.setAttribute('aria-current', 'page');
