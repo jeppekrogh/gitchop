@@ -108,6 +108,26 @@ body {
   background: rgba(255, 255, 255, 0.04);
 }
 
+/* A page that can do nothing until a token is saved is dimmed on the rail, legibly, until then. */
+.rail-item[data-locked="true"] {
+  opacity: 0.45;
+}
+
+.rail-item[data-locked="true"][aria-current="page"],
+.rail-item[data-locked="true"]:hover,
+.rail-item[data-locked="true"]:focus-visible {
+  opacity: 0.75;
+}
+
+/* In place of controls that could only fail: one line, and the way to the page that fixes it. */
+.gate {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 28px 18px 12px;
+  color: var(--dim);
+}
+
 .page {
   display: grid;
   gap: 28px;

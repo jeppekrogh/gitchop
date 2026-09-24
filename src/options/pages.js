@@ -49,6 +49,44 @@ export function show(id) {
   return page;
 }
 
+/**
+ * The pages that can do nothing without a token are dimmed on the rail until one is saved, so the
+ * rail says which pages are live before any of them is opened. The token card calls this on every
+ * render, being the one that knows.
+ */
+export function tokenState(hasToken) {
+  for (const item of items) {
+    if (!('needsToken' in item.dataset)) continue;
+    item.dataset.locked = String(!hasToken);
+    if (hasToken) item.removeAttribute('title');
+    else item.title = 'Needs a token';
+  }
+}
+
+/**
+ * The body of a card whose feature has no token to work with yet: one line that says so, and the
+ * way to the page that fixes it — in place of controls that could only fail.
+ */
+export function tokenGate() {
+  const wrap = document.createElement('div');
+  wrap.className = 'card-body';
+  const gate = document.createElement('div');
+  gate.className = 'gate';
+  const line = document.createElement('p');
+  line.textContent = 'Needs a token.';
+  const go = document.createElement('button');
+  go.type = 'button';
+  go.className = 'btn';
+  go.textContent = 'Add a token →';
+  go.addEventListener('click', () => {
+    show('token');
+    items.find((item) => item.dataset.page === 'token')?.focus();
+  });
+  gate.append(line, go);
+  wrap.append(gate);
+  return wrap;
+}
+
 export function mount() {
   for (const item of items) item.addEventListener('click', () => show(item.dataset.page));
   // Up and down walk the rail and Home and End jump to its ends, each landing on the page it names.

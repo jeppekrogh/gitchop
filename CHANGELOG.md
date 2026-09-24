@@ -67,8 +67,11 @@ it from.
   three parts: what the feature is, above the box; the settings themselves, in it; and what is worth
   knowing about them as they stand, below it — so only controls sit inside a border. Every note is
   shorter, the token card's list of every call made with a token is a link to the privacy notes that
-  carry it, and the notes that pointed at a card "above" or "below" now name its page. Every card
-  stays in the document, only hidden, so nothing about how they load or save has changed. (#3)
+  carry it, and the notes that pointed at a card "above" or "below" now name its page. The pages
+  that can do nothing without a token — Pull requests, Private repository search, Backup — are
+  dimmed on the rail until one is saved, and each shows one line saying so with the way to the Token
+  page in place of controls that could only fail. Every card stays in the document, only hidden, so
+  nothing about how they load or save has changed. (#3)
 
 ## 2.5.0
 

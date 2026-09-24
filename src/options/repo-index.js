@@ -1,4 +1,5 @@
 import { api } from '../lib/links.js';
+import { tokenGate } from './pages.js';
 
 const host = document.getElementById('index');
 const statusEl = document.getElementById('index-status');
@@ -59,11 +60,20 @@ async function guard(node, work) {
   }
 }
 
+/** Whether a token is saved: the index is built from one, so without it there is nothing to build. */
+let tokened = false;
+
 function render(index, error) {
   host.textContent = '';
   notes.textContent = '';
-  const wrap = element('div', 'card-body');
 
+  if (!tokened) {
+    host.append(tokenGate());
+    notes.append(element('p', 'note', 'The index is the repositories a token can reach; without one there is nothing to build.'));
+    return;
+  }
+
+  const wrap = element('div', 'card-body');
   if (!(index && index.count > 0)) wrap.append(element('p', 'empty', 'No index built yet.'));
 
   if (index && index.count > 0) {
@@ -133,7 +143,9 @@ function render(index, error) {
 
 export async function load() {
   try {
-    render(await ask({ type: 'gitchop:index:state' }));
+    const [index, sync] = await Promise.all([ask({ type: 'gitchop:index:state' }), ask({ type: 'gitchop:sync:state' })]);
+    tokened = Boolean(sync.hasToken);
+    render(index);
   } catch (error) {
     render(null, String(error.message ?? error));
   }

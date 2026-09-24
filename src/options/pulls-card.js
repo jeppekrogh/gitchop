@@ -1,5 +1,6 @@
 import { api } from '../lib/links.js';
 import { SWITCHES } from '../lib/pulls.js';
+import { tokenGate } from './pages.js';
 
 const host = document.getElementById('pulls');
 const statusEl = document.getElementById('pulls-status');
@@ -95,16 +96,15 @@ function render(state, error) {
   const wrap = element('div', 'card-body');
 
   if (!state?.hasToken) {
-    wrap.append(element('p', 'empty', 'No token saved.'));
     notes.append(
       element(
         'p',
         'note',
-        'Needs a token under Token: a classic one with repo, or a fine-grained one with Pull requests: ' +
-          'read-only per owner. Without one there is no column.',
+        'A classic token with repo, or a fine-grained one with Pull requests: read-only per owner. ' +
+          'Without one there is no column.',
       ),
     );
-    host.append(wrap);
+    host.append(tokenGate());
     return;
   }
 

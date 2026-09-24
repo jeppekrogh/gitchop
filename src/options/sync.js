@@ -1,5 +1,6 @@
 import { tokenLabel } from '../lib/gist.js';
 import { api } from '../lib/links.js';
+import { tokenGate, tokenState } from './pages.js';
 
 const TOKEN_CLASSIC = 'https://github.com/settings/tokens/new?scopes=repo,gist&description=gitchop';
 const TOKEN_FINE = 'https://github.com/settings/personal-access-tokens/new';
@@ -367,8 +368,6 @@ function facts(rows) {
 
 /** Without a token there is nothing to write the gist with, so the card only says what it would take. */
 function backupNeedsToken() {
-  const wrap = element('div', 'card-body');
-  wrap.append(element('p', 'empty', 'No token saved.'));
   backupNotes.append(
     element(
       'p',
@@ -377,7 +376,7 @@ function backupNeedsToken() {
         'blank, or a classic one with gist. gitchop uses whichever saved token can write the gist.',
     ),
   );
-  return wrap;
+  return tokenGate();
 }
 
 function backupOff(sync, error) {
@@ -476,6 +475,7 @@ function backupOn(sync, error) {
 function render(sync, error, card = 'token') {
   const tokenError = card === 'token' ? error : null;
   const backupError = card === 'backup' ? error : null;
+  tokenState(Boolean(sync?.hasToken));
 
   tokenHost.textContent = '';
   tokenNotes.textContent = '';
