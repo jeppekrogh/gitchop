@@ -15,8 +15,10 @@
   padding: 0;
 }
 
+/* The same dark as the menu's scrim, lit a little from the top so the page is not a flat sheet. */
 body {
-  background: var(--bg);
+  min-height: 100vh;
+  background: radial-gradient(90% 520px at 50% -80px, #10141a, var(--bg) 100%) no-repeat, var(--bg);
   color: var(--text);
   font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   padding: 48px 24px 96px;
@@ -95,6 +97,7 @@ body {
 .rail-item:hover,
 .rail-item:focus-visible {
   color: var(--text);
+  background: rgba(255, 255, 255, 0.025);
   outline: none;
 }
 
@@ -135,13 +138,15 @@ body {
 }
 
 /*
- * A page is three parts: what the feature is, above the box; the settings themselves, in it; and
- * what is worth knowing about them as they stand, below it. Only the box has a border, so the eye
- * lands on the controls and the prose stays prose.
+ * A page is three parts: what the feature is, above the box, in the page's own voice and size; the
+ * settings themselves, in it; and what is worth knowing about them as they stand, below it, small
+ * and dim. Only the box has a border, so the eye lands on the controls and the prose stays prose.
+ * A page arriving rises the few pixels the menu's own popovers do.
  */
 .pane {
   display: grid;
-  gap: 14px;
+  gap: 16px;
+  animation: pane-in 180ms ease-out;
 }
 
 /* The rail hides a pane with the attribute; the display rule above would otherwise outrank it. */
@@ -149,9 +154,35 @@ body {
   display: none;
 }
 
-.intro,
+@keyframes pane-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pane {
+    animation: none;
+  }
+}
+
+.intro {
+  color: var(--text);
+  opacity: 0.84;
+  font-size: 15px;
+  line-height: 1.55;
+  max-width: 60ch;
+  padding: 0 2px;
+}
+
 .notes .note {
   color: var(--dim);
+  font-size: 13px;
   max-width: 64ch;
   padding: 0 2px;
 }
@@ -211,15 +242,33 @@ body {
   }
 }
 
+/*
+ * The wordmark, the page's name, and under them the cut: the blade's line, bright in the middle
+ * and gone at the ends with a faint halo, laid a hair off level as the chop itself is. It is the
+ * one thing on this page that says which extension it belongs to.
+ */
 .masthead {
+  position: relative;
   display: grid;
-  gap: 8px;
-  padding-bottom: 4px;
+  gap: 10px;
+  padding-bottom: 26px;
+}
+
+.masthead::after {
+  content: "";
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6) 22%, rgba(255, 255, 255, 0.6) 78%, transparent);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.28);
+  transform: rotate(-0.5deg);
 }
 
 .wordmark {
-  font: 600 15px/1 var(--mono);
-  letter-spacing: 0.3em;
+  font: 600 12px/1 var(--mono);
+  letter-spacing: 0.34em;
   text-transform: uppercase;
   color: var(--dim);
 }
@@ -229,9 +278,10 @@ body {
   font-weight: 600;
 }
 
-.tagline {
-  color: var(--dim);
-  max-width: 52ch;
+.page-title {
+  font: 300 28px/1.1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
 
 .mono {
@@ -269,6 +319,7 @@ kbd {
   gap: 12px;
   padding: 15px 18px;
   border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.015);
 }
 
 .card-head h2 {
@@ -522,6 +573,8 @@ dl.tokens {
 .footer {
   display: flex;
   justify-content: center;
+  align-items: baseline;
+  gap: 20px;
   padding: 4px 0 8px;
   color: var(--dim);
   font-size: 11px;
