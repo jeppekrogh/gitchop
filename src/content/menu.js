@@ -50,13 +50,13 @@ window.__gitchop = window.__gitchop || {};
   /** How long a popover outlives the mouse leaving its chip — long enough to reach it diagonally. */
   const POP_LINGER = 120;
 
-  gc.createMenu = function createMenu({ ctx, links, pulls, news, contributions, panel, onClose, onOptions, onLinksChanged }) {
+  gc.createMenu = function createMenu({ ctx, links, pulls, news, contributions, panel: panelSetting, onClose, onOptions, onLinksChanged }) {
     /**
      * The panel — the links and the search — is the menu unless switched off in Settings; then the
      * columns stand on their own, the news alone if that is all that is on. It is never nothing:
      * with no column to stand, the panel stays whatever the switch says.
      */
-    const hasPanel = panel?.show !== false || !(pulls?.show || (Boolean(news?.show) && (news?.repos?.length ?? 0) > 0));
+    const hasPanel = panelSetting?.show !== false || !(pulls?.show || (Boolean(news?.show) && (news?.repos?.length ?? 0) > 0));
     const panel = node('div', 'gc-panel');
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
