@@ -108,6 +108,11 @@ body {
   gap: 14px;
 }
 
+/* The rail hides a pane with the attribute; the display rule above would otherwise outrank it. */
+.pane[hidden] {
+  display: none;
+}
+
 .intro,
 .notes .note {
   color: var(--dim);
