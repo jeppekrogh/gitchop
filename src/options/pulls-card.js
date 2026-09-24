@@ -108,11 +108,11 @@ function render(state, error) {
     return;
   }
 
-  // The column's own switch is under Features with the other columns'; the rest of its settings are here.
+  // The column's own switch is under Panels with the other columns'; the rest of its settings are here.
   const switches = element('div', 'sliders');
   for (const spec of SWITCHES.filter((spec) => spec.id !== 'enabled')) switches.append(switchRow(spec, state));
   wrap.append(switches);
-  if (state.settings.enabled !== 1) notes.append(element('p', 'note', 'The column is switched off under Features.'));
+  if (state.settings.enabled !== 1) notes.append(element('p', 'note', 'The column is switched off under Panels.'));
 
   const lanes = state.lanes ?? [];
   if (state.settings.enabled === 1 && lanes.some((lane) => lane.pulls !== null)) {

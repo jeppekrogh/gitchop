@@ -372,7 +372,7 @@ function backupNeedsToken() {
     element(
       'p',
       'note',
-      'Needs a token under Token: a fine-grained one for your own account, made with the owner left ' +
+      'Needs a token under Tokens: a fine-grained one for your own account, made with the owner left ' +
         'blank, or a classic one with gist. gitchop uses whichever saved token can write the gist.',
     ),
   );

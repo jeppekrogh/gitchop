@@ -99,7 +99,7 @@ typing anything drops you straight back into the search with the character you t
 shows everything it holds — the column scrolls when there is more than fits — so nothing sends you off
 to a GitHub list page. It paints from its last snapshot the instant the menu opens and refreshes behind
 it; the toolbar icon carries the number waiting on you, so you know before you press the key.
-Settings has a switch for the column under Features, and for the badge and whether drafts count under Pull requests.
+Settings has a switch for the column under Panels, and for the badge and whether drafts count under Pull requests.
 
 It needs a token that can read pull requests: a classic token with `repo`, or a fine-grained one with
 **Pull requests: read-only**. A fine-grained token that was only granted Metadata is enough for the
@@ -129,7 +129,7 @@ search result — and choose **Subscribe to news** under *Pull requests* and *Is
 unsubscribes. On a repository's own page the command sits in the list under *Do*, since the links
 that point inside a repository do not have a row for the repository itself. Settings has the list,
 a way to add one by name, the edition hour, and a **Refresh now** that asks GitHub again without
-moving the window; the switch for the column is under Features.
+moving the window; the switch for the column is under Panels.
 
 The column is read with the mouse and never takes the keyboard: prose is not a list of rows to
 be a cursor in, so the arrows and Tab stay with the links and the pull requests exactly as
@@ -150,7 +150,7 @@ year has something to stand beside. It is not a link; it is there to be looked a
 It is one GraphQL request per saved token, asking for this year from January the 1st to now and for
 each of the three whole years before, and the highest count for this year is the one shown, its past
 years with it — a fine-grained token sees fewer repositories than a classic one and may count fewer.
-A switch under Features in Settings turns it off.
+A switch under Panels in Settings turns it off.
 
 ## Backup
 

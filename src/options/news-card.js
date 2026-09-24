@@ -191,12 +191,12 @@ function render(state, error) {
     return;
   }
 
-  // The column's own switch is under Features with the other columns'; the hour is here.
+  // The column's own switch is under Panels with the other columns'; the hour is here.
   const controls = element('div', 'sliders');
   controls.dataset.off = String(state.settings.enabled !== 1);
   controls.append(hourRow(state));
   wrap.append(controls);
-  if (state.settings.enabled !== 1) notes.append(element('p', 'note', 'The column is switched off under Features.'));
+  if (state.settings.enabled !== 1) notes.append(element('p', 'note', 'The column is switched off under Panels.'));
 
   if (state.repos.length > 0) {
     wrap.append(repoList(state));
