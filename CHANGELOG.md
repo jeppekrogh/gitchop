@@ -24,16 +24,16 @@ it from.
   switch, the numbers, when they were refreshed, and a **Refresh now**. Removing the last token
   deletes the snapshot with the rest. (#7)
 - **The settings page is paged.** Eight cards in one column had become a long scroll, so a rail on
-  the left now names every card under two headings — Menu: Links, Placeholders, Chop effect; GitHub:
-  Token, Private repository search, Pull requests, News, Contributions — and one card stands on the
-  right at a time. The page remembers the card it was left on, in the address and for the next
-  visit; up and down walk the rail. A narrow window puts the rail above the card as a row instead.
-  Each page is three parts: what the feature is, above the box; the settings themselves, in it; and
-  what is worth knowing about them as they stand, below it — so only controls sit inside a border.
-  Every note is shorter, the token card's list of every call made with a token is a link to the
-  privacy notes that carry it, and the notes that pointed at a card "above" or "below" now name its
-  page. Every card stays in the document, only hidden, so nothing about how they load or save has
-  changed. (#3)
+  the left now names every page under two headings — Menu: Links, with the placeholders under the
+  links; Chop effect. GitHub: Token, Private repository search, Pull requests, News, Contributions —
+  and one card stands on the right at a time. The page remembers the card it was left on, in the
+  address and for the next visit; up and down walk the rail. A narrow window puts the rail above the
+  card as a row instead. Each page is three parts: what the feature is, above the box; the settings
+  themselves, in it; and what is worth knowing about them as they stand, below it — so only controls
+  sit inside a border. Every note is shorter, the token card's list of every call made with a token
+  is a link to the privacy notes that carry it, and the notes that pointed at a card "above" or
+  "below" now name its page. Every card stays in the document, only hidden, so nothing about how
+  they load or save has changed. (#3)
 
 ## 2.5.0
 

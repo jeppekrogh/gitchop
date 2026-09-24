@@ -31,7 +31,6 @@
         <nav class="rail" aria-label="Settings pages">
           <span class="rail-group">Menu</span>
           <button type="button" class="rail-item" data-page="links">Links</button>
-          <button type="button" class="rail-item" data-page="placeholders">Placeholders</button>
           <button type="button" class="rail-item" data-page="effects">Chop effect</button>
           <span class="rail-group">GitHub</span>
           <button type="button" class="rail-item" data-page="token">Token</button>
@@ -43,10 +42,7 @@
 
         <div class="page">
           <div class="pane" data-page="links" hidden>
-            <p class="intro">
-              The links the menu shows, top to bottom. A URL can carry placeholders, filled in from
-              the page you are on.
-            </p>
+            <p class="intro">The links the menu shows, top to bottom.</p>
             <section class="card">
               <div class="card-head">
                 <h2>Your links</h2>
@@ -60,7 +56,13 @@
                 <button type="button" class="btn" id="reset">Restore defaults</button>
               </div>
             </section>
-            <div class="notes" id="links-notes"></div>
+            <div class="notes" id="links-notes">
+              <p class="note">
+                Any of these in a link’s URL is filled in from the page you are on. A link that cannot be
+                filled in is greyed out in the menu.
+              </p>
+              <dl class="tokens" id="tokens"></dl>
+            </div>
           </div>
 
           <div class="pane" data-page="effects" hidden>
@@ -152,20 +154,6 @@
               <div id="contributions"></div>
             </section>
             <div class="notes" id="contributions-notes"></div>
-          </div>
-
-          <div class="pane" data-page="placeholders" hidden>
-            <p class="intro">
-              Any of these in a link’s URL is filled in from the page you are on. A link that cannot
-              be filled in is greyed out in the menu.
-            </p>
-            <section class="card">
-              <div class="card-head">
-                <h2>Placeholders</h2>
-              </div>
-              <dl class="tokens" id="tokens"></dl>
-            </section>
-            <div class="notes" id="placeholders-notes"></div>
           </div>
         </div>
       </div>

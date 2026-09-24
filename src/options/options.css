@@ -137,6 +137,10 @@ body {
   padding: 0 2px 0 22px;
 }
 
+.notes dl.tokens {
+  padding: 2px 2px 0;
+}
+
 @media (max-width: 760px) {
   .pages {
     grid-template-columns: minmax(0, 1fr);
