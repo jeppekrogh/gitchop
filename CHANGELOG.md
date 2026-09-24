@@ -5,6 +5,42 @@ it from.
 
 ## Unreleased
 
+- The token card in Settings is a recipe rather than an essay. The fine-grained token comes first,
+  marked recommended, in three numbered steps: name the owner, open GitHub's form for it, paste what
+  comes back. The owner step says outright that typing the exact name of the organisation is what
+  pre-ticks the permissions, and the link and its hint rename themselves to that owner as you type.
+  The classic token is warned against in a red box instead of being offered as the simplest, since
+  its repo scope is write everywhere the account reaches; a saved classic token gets the same box in
+  place of the old note, telling you to replace and revoke it. The account of how tokens are stored
+  folds away under a heading. The recipe stays at the top once tokens are saved, and the saved tokens
+  are listed beneath it, so what is pasted appears right below where it was pasted and the card does
+  not reshuffle when the first token lands; a second organisation is the same three steps again.
+- Backup has a card of its own in Settings, the last before the placeholders, with its own status
+  corner. It used to share
+  the token card, so the gist field and its buttons ran on from the token rows. Without a token the
+  card says what backup would take; with one, the gist field and the switch; connected, the gist and
+  the last pull and push, with the pull, push and stop. A failure shows on the card whose button
+  caused it, and the background's own last error, which is always the gist's, shows on the backup
+  card. The token card is tokens only.
+- The fine-grained token link in Settings now opens GitHub's form with the grants ticked — Pull
+  requests, Issues and Contents read-only, and Gists for the backup when the token is the account's
+  own — so only the repositories are left to choose. The owner is named in a field beside the link
+  and travels with it, because GitHub clears every tick the moment the owner is changed on the form
+  itself. The same recipe stays at the top of the card once a token is in place, which is where the
+  second organisation's token is made. Metadata read-only alone was enough for the index but left the pull
+  request lanes empty and the news from a private repository failing, and the form gave no hint of
+  which of the forty-odd permissions gitchop actually reads.
+- A saved fine-grained token is listed under the owner it reaches, read off the private repositories
+  it lists, rather than under the login of whoever made it — which is the same login on every one, so
+  three organisations' tokens read as three identical rows. Public repositories are left out of that
+  reading because they say nothing: every token can list them, whoever it was made for, and a token
+  awaiting an organisation's approval lists the public half of every organisation the account belongs
+  to and nothing else. Such a token's row says it reaches no private repositories yet, and the index
+  card now says the same — its earlier claim that an unapproved organisation would be missing from
+  the account list was wrong, since the organisation shows up with its public repositories and only
+  the private count gives it away. Classic tokens keep the login: they are the account's and cover
+  everything it can reach. Tokens saved before this learn their owner the next time the index is
+  built.
 - **Your contributions this year, in the head of the menu.** With a token saved, the number your
   profile prints for the year — *1234 contributions in 2026* — sits beside the title, spun in like a
   slot machine's: every reel sets off the moment the panel is up and they stop one at a time, left

@@ -72,8 +72,19 @@ GitHub's search does not return private repositories. To find them, add a GitHub
 and press **Build index** — gitchop then keeps its own list of the repositories your token can reach,
 and matches it locally.
 
-A classic token with the `repo` scope is simplest and covers every organisation. A fine-grained token
-with **Metadata: read-only** grants less but covers one organisation each; add as many as you need.
+Settings recommends a fine-grained token and warns against a classic one: the `repo` scope a classic
+token needs grants write to every repository the account can reach, in every organisation, and
+gitchop only ever reads. The fine-grained recipe is three steps. Name the owner — the exact name of
+the organisation, or blank for your own account — and the link opens GitHub's form for that owner
+with **Pull requests**, **Issues** and **Contents: read-only** already ticked, so only the
+repositories and an expiration are left to choose. Name the owner in Settings rather than on the
+form: GitHub clears the ticks the moment the owner is changed there. Then paste the token. A
+fine-grained token covers one owner, so a second organisation is the same three steps again. Each
+saved token is listed under the owner whose private repositories it reaches, so two organisations'
+tokens read as two organisations, not two copies of you. One that reaches no private repository yet
+says so. That is what a token awaiting an organisation's approval looks like: every token can list
+public repositories, whoever it was made for, so until the approval it indexes the public half of
+every organisation you belong to and nothing private, and the index card's private count reads zero.
 
 ## Pull requests
 
@@ -144,7 +155,9 @@ Settings has a switch for it, the numbers, when they were last refreshed, and a 
 ## Backup
 
 Links live in the browser profile, and go with the extension if you remove it. Connect a secret gist
-in Settings and every change is written there as a new revision.
+under **Backup** in Settings and every change is written there as a new revision. The gist is written
+with whichever saved token can reach it: a fine-grained token for your own account, which the token
+link asks Gists for when the owner is left blank, or a classic token with `gist`.
 
 [PRIVACY.md](PRIVACY.md) covers what is stored and what is sent to GitHub.
 

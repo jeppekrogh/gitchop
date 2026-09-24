@@ -1,24 +1,56 @@
+import { tokenLabel } from '../lib/gist.js';
 import { api } from '../lib/links.js';
 
 const TOKEN_CLASSIC = 'https://github.com/settings/tokens/new?scopes=repo,gist&description=gitchop';
 const TOKEN_FINE = 'https://github.com/settings/personal-access-tokens/new';
+/**
+ * What GitHub's form is asked to tick: Metadata comes with any repository permission, Pull requests
+ * carries the lanes, Issues and Contents with it carry the news. Gists is the backup's, and only the
+ * account itself can hold it, so it is asked for only when no other owner is named.
+ */
+const FINE_GRANTS = { pull_requests: 'read', issues: 'read', contents: 'read' };
 
-const host = document.getElementById('sync');
-const statusEl = document.getElementById('sync-status');
+/** The owner as GitHub spells it in a URL: trimmed, and without the @ people tend to type. */
+function ownerName(value) {
+  return String(value ?? '').trim().replace(/^@/, '');
+}
 
-let statusTimer = null;
+/**
+ * The form pre-ticked for one owner. The owner has to travel in the link: GitHub clears every tick
+ * the moment the owner is changed on the form itself, and a fine-grained token has exactly one.
+ */
+function fineTokenUrl(owner) {
+  const target = ownerName(owner);
+  const params = new URLSearchParams({ name: target ? `gitchop ${target}`.slice(0, 40) : 'gitchop', ...FINE_GRANTS });
+  if (target) params.set('target_name', target);
+  else params.set('gists', 'write');
+  return `${TOKEN_FINE}?${params}`;
+}
+
+const tokenHost = document.getElementById('sync');
+const backupHost = document.getElementById('backup');
+
 let busy = false;
 let current = null;
 let onTokenChange = () => {};
 
-function flash(text) {
-  statusEl.textContent = text;
-  statusEl.dataset.shown = 'true';
-  clearTimeout(statusTimer);
-  statusTimer = setTimeout(() => {
-    statusEl.dataset.shown = 'false';
-  }, 2600);
+/** Each card has its own status corner, so a saved token and a pushed gist do not fight over one. */
+function flasher(node) {
+  let timer = null;
+  return (text) => {
+    node.textContent = text;
+    node.dataset.shown = 'true';
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      node.dataset.shown = 'false';
+    }, 2600);
+  };
 }
+
+const flash = {
+  token: flasher(document.getElementById('sync-status')),
+  backup: flasher(document.getElementById('backup-status')),
+};
 
 /**
  * Holding a token and shipping the link list are declared as optional data collection, so consent
@@ -84,18 +116,21 @@ function textInput({ password = false, placeholder = '', label = '' } = {}) {
   return input;
 }
 
-/** Guards against a second click while a request is in flight. */
-async function guard(node, work) {
+/**
+ * Guards against a second click while a request is in flight. A failure is reported on the card the
+ * button sits in, and the work is handed that card's flash for the same reason.
+ */
+async function guard(node, card, work) {
   if (busy) return;
   busy = true;
   const label = node.textContent;
   node.textContent = 'working…';
   try {
-    await work();
+    await work(flash[card]);
   } catch (error) {
-    flash('failed');
+    flash[card]('failed');
     // Keep whatever state we were in — a failed pull must not look like a disconnection.
-    render(current, String(error.message ?? error));
+    render(current, String(error.message ?? error), card);
     return;
   } finally {
     busy = false;
@@ -103,117 +138,187 @@ async function guard(node, work) {
   }
 }
 
-function recipe() {
-  const wrap = element('div', 'recipe');
-  wrap.append(element('p', 'note', 'One classic token covers everything, including every organisation you belong to:'));
+function step(lead, ...controls) {
+  const item = element('li');
+  const box = element('div', 'step');
+  const row = element('div', 'step-row');
+  row.append(element('b', null, lead), ...controls);
+  box.append(row);
+  item.append(box);
+  return { item, box };
+}
 
-  const steps = element('ol', 'steps');
-  const items = [
-    ['Scopes', 'repo and gist. repo is what lists private repositories, reads the pull requests beside the menu and the news from private repositories you subscribe to; gist is only for the backup, so leave it off if you do not want that.'],
-    ['Expiration', 'set one. When it lapses, search stops and this page reports the rejection — nothing is lost, and it beats a credential with no end date.'],
-    ['Nothing else', 'no other scope is needed or used.'],
-  ];
-  for (const [term, detail] of items) {
-    const step = element('li');
-    step.append(element('b', null, term), document.createTextNode(` — ${detail}`));
-    steps.append(step);
-  }
-  wrap.append(steps);
-  wrap.append(
+function hint(text) {
+  return element('p', 'step-hint', text);
+}
+
+/**
+ * The way to a fine-grained token, in the order it happens: name the owner, open GitHub's form for
+ * that owner, paste what comes back. The link follows the owner typed in the first step, and the form
+ * it opens arrives with the permissions gitchop needs already ticked for that owner — blank is the
+ * account itself, whose token also carries the backup's gist. Saving is the third step, so the whole
+ * thing reads top to bottom.
+ */
+function fineSteps({ placeholder, saveLabel, primary }) {
+  const list = element('ol', 'steps');
+
+  const owner = textInput({ placeholder: 'organisation, exact name', label: 'Owner of the fine-grained token' });
+  owner.className = 'owner';
+  const one = step('Owner', owner);
+  one.box.append(
+    hint(
+      'Type the exact name of your organisation, as it appears in github.com/‹name›. Leave it blank ' +
+        'for a token on your own account.',
+    ),
+  );
+
+  const anchor = link('', '');
+  const two = step('Create', anchor);
+  const ticked = hint('');
+  two.box.append(ticked);
+
+  const token = textInput({ password: true, placeholder, label: 'GitHub token' });
+  const save = button(saveLabel, { primary });
+  save.addEventListener('click', () =>
+    guard(save, 'token', async (flash) => {
+      if (!(await consent(['authenticationInfo']))) {
+        flash('not allowed');
+        return;
+      }
+      const result = await ask({ type: 'gitchop:token:save', token: token.value });
+      flash('saved');
+      current = result;
+      render(result);
+      onTokenChange();
+    }),
+  );
+  const three = step('Paste', token, save);
+  three.box.append(hint('A fine-grained token reaches one owner. Add another for each organisation.'));
+
+  const follow = () => {
+    const target = ownerName(owner.value);
+    anchor.href = fineTokenUrl(target);
+    anchor.textContent = target ? `Open GitHub’s form for @${target} →` : 'Open GitHub’s form for your own account →';
+    ticked.textContent =
+      (target
+        ? `The form opens for @${target} with the permissions gitchop needs already ticked: Pull requests, Issues and Contents, read-only. `
+        : 'The form opens for your account with the permissions gitchop needs already ticked: Pull requests, Issues and Contents, read-only, and Gists for the backup. ') +
+      'You only choose the repositories and an expiration. Leave the owner as it is: changing it on the form clears the ticks.';
+  };
+  owner.addEventListener('input', follow);
+  follow();
+
+  list.append(one.item, two.item, three.item);
+  return list;
+}
+
+function recipeHead(title, tag) {
+  const head = element('div', 'recipe-head');
+  head.append(element('span', null, title));
+  if (tag) head.append(element('span', 'recipe-tag', tag));
+  return head;
+}
+
+/**
+ * The classic token is kept reachable, because some organisations still allow nothing else, but it is
+ * warned against rather than offered: repo is write everywhere the account reaches.
+ */
+function classicCaution() {
+  const box = element('div', 'caution');
+  box.append(
+    element('b', null, 'Avoid classic tokens'),
     element(
       'p',
-      'note',
-      'Worth knowing what you are handing over: classic tokens have no read-only scope for private ' +
-        'repositories, so repo also grants write to every repository the account can reach. gitchop only ' +
-        'ever lists them. If you would rather grant less, a fine-grained token with Metadata read-only ' +
-        'lists them without the write — but it covers one owner each, so two organisations means two ' +
-        'tokens, and an organisation may require an owner to approve them. Add as many as you like below.',
+      null,
+      'A classic token cannot be read-only. The repo scope it needs also grants write access to every ' +
+        'repository your account can reach, in every organisation you belong to, and gitchop only ever ' +
+        'reads. Use one only if your organisation does not allow fine-grained tokens.',
     ),
+    link('Classic token anyway, repo + gist →', TOKEN_CLASSIC),
+  );
+  return box;
+}
+
+function fineprint() {
+  const box = element('details', 'fineprint');
+  box.append(
+    element('summary', null, 'How tokens are stored'),
+    element(
+      'p',
+      null,
+      'Tokens are stored outside synced storage, obfuscated rather than left as readable text, only ' +
+        'ever sent to api.github.com, and never handed to a web page. Each is used for five calls and ' +
+        'no others: who the account is, which repositories it can see, which open pull requests are ' +
+        'yours or want your review, what happened lately in the repositories you subscribe to, and ' +
+        'reading and writing the one gist. Obfuscation is not encryption — anyone with access to this ' +
+        'profile can still recover them — but a token no longer sits in the profile as searchable text.',
+    ),
+  );
+  return box;
+}
+
+function intro() {
+  return element(
+    'p',
+    'note',
+    'A token lets gitchop find your private repositories, show the pull requests waiting on you, ' +
+      'follow news from the private repositories you subscribe to, and back your links up to a ' +
+      'secret gist. Public repositories need none.',
+  );
+}
+
+/**
+ * The same recipe whether or not a token is saved yet, and always at the top of the card: a second
+ * organisation is the same three steps again, and what gets pasted lands in the list right beneath.
+ */
+function recipe() {
+  const wrap = element('div', 'recipe');
+  wrap.append(
+    recipeHead('Fine-grained token', 'recommended'),
+    fineSteps({ placeholder: 'github_pat_…', saveLabel: 'Save token', primary: true }),
   );
   return wrap;
 }
 
 function noToken(error) {
   const wrap = element('div', 'card-body');
-  wrap.append(
-    element(
-      'p',
-      'note',
-      'One token unlocks four things: finding private repositories, which GitHub’s search will not ' +
-        'return; the pull requests waiting on you, beside the menu; news from private repositories ' +
-        'you subscribe to — public ones need no token; and backing your links up to a secret gist.',
-    ),
-  );
-  wrap.append(recipe());
-
-  const token = textInput({ password: true, placeholder: 'github_pat_… or ghp_…', label: 'GitHub token' });
-  const fields = element('div', 'form');
-  fields.append(field('Token', token));
-
-  const save = button('Save token', { primary: true });
-  save.addEventListener('click', () =>
-    guard(save, async () => {
-      if (!(await consent(['authenticationInfo']))) {
-        flash('not allowed');
-        return;
-      }
-      await ask({ type: 'gitchop:token:save', token: token.value });
-      flash('saved');
-      await load();
-      onTokenChange();
-    }),
-  );
-
-  const actions = element('div', 'actions');
-  actions.append(save);
-
-  const scopes = element('ul', 'scopes');
-  const classic = element('li');
-  classic.append(link('Classic token, repo + gist →', TOKEN_CLASSIC), document.createTextNode(' simplest'));
-  const fine = element('li');
-  fine.append(
-    link('Fine-grained token →', TOKEN_FINE),
-    document.createTextNode(' tighter, one per organisation'),
-  );
-  scopes.append(classic, fine);
-
-  wrap.append(fields, actions, scopes);
+  wrap.append(intro(), recipe(), classicCaution());
   if (error) wrap.append(element('p', 'error', error));
-  wrap.append(
-    element(
-      'p',
-      'note',
-      'Tokens are stored outside synced storage, obfuscated rather than left as readable text, only ' +
-        'ever sent to api.github.com, and never handed to a web page. Each is used for five calls and ' +
-        'no others: who the account is, which repositories it can see, which open pull requests are ' +
-        'yours or want your review, what happened lately in the repositories you subscribe to, and ' +
-        'reading and writing the one gist. Obfuscation is not ' +
-        'encryption — anyone with access to this profile can still recover ' +
-        'them — but a token no longer sits in the profile as searchable text.',
-    ),
-  );
+  wrap.append(fineprint());
   return wrap;
 }
 
-/** Lists what has actually been handed over, so an over-broad token cannot hide. */
+/**
+ * What a token has been given, and where: the scopes of a classic token, so an over-broad one cannot
+ * hide, and the owner whose private repositories a fine-grained one reaches, so two organisations'
+ * tokens can be told apart. One that reaches no private repository says so: every token can list
+ * public ones, and a token an organisation has yet to approve can list nothing else.
+ */
+function tokenDetail(entry) {
+  const kind = entry.kind ?? 'token';
+  if (entry.scopes.length > 0) return `${kind} — ${entry.scopes.join(', ')}`;
+  if (entry.kind !== 'classic' && Array.isArray(entry.owners) && entry.owners.length === 0) {
+    return `${kind} — reaches no private repositories yet`;
+  }
+  return entry.kind ?? 'saved';
+}
+
 function tokenList(sync) {
   const wrap = element('div', 'tokens');
   for (const entry of sync.tokens) {
     const row = element('div', 'token');
-    const name = entry.login ? `@${entry.login}` : 'token';
-    const detail = entry.scopes.length > 0 ? `${entry.kind ?? 'token'} — ${entry.scopes.join(', ')}` : entry.kind ?? 'saved';
 
     const label = element('div', 'token-name');
-    label.append(element('b', null, name), element('span', 'token-detail', detail));
+    label.append(element('b', null, tokenLabel(entry)), element('span', 'token-detail', tokenDetail(entry)));
     if (entry.broad) label.append(element('span', 'token-warn', 'writes'));
 
     const drop = button('Remove');
     drop.addEventListener('click', () =>
-      guard(drop, async () => {
+      guard(drop, 'token', async (flash) => {
         const result = await ask({ type: 'gitchop:token:remove', id: entry.id });
         flash('removed');
-        render(result);
         current = result;
+        render(result);
         onTokenChange();
       }),
     );
@@ -230,13 +335,31 @@ function broadWarning(sync) {
   const scopes = [...new Set(broad.flatMap((entry) => entry.scopes))]
     .filter((scope) => /^(repo|workflow|delete_repo|admin:|write:)/.test(scope))
     .join(', ');
-  return element(
-    'p',
-    'note',
-    `Marked "writes": ${scopes}. That is expected of a classic token — repo is the only scope that ` +
-      'lists private repositories and it carries write with it, which gitchop never uses. Keep an ' +
-      'expiry on it, and revoke it rather than leaving it idle if you stop using gitchop.',
+  const box = element('div', 'caution');
+  box.append(
+    element('b', null, 'Classic token: grants write'),
+    element(
+      'p',
+      null,
+      `Marked "writes": ${scopes}. This token can write to every repository the account can reach, in ` +
+        'every organisation, and gitchop never uses that. Replace it with a fine-grained token from the ' +
+        'steps above and revoke it on GitHub. If it has to stay, keep an expiry on it.',
+    ),
   );
+  return box;
+}
+
+/** The recipe first, then what it has produced so far, then the warning about any classic row in it. */
+function tokenCard(sync, error) {
+  const wrap = element('div', 'card-body');
+  const saved = element('div', 'recipe');
+  saved.append(recipeHead('Saved tokens'), tokenList(sync));
+  wrap.append(intro(), recipe(), saved);
+  const warn = broadWarning(sync);
+  if (warn) wrap.append(warn);
+  if (error) wrap.append(element('p', 'error', error));
+  wrap.append(fineprint());
+  return wrap;
 }
 
 function facts(rows) {
@@ -249,45 +372,40 @@ function facts(rows) {
   return list;
 }
 
-function addAnother() {
-  const token = textInput({ password: true, placeholder: 'another github_pat_… for a second owner', label: 'GitHub token' });
-  const fields = element('div', 'form');
-  fields.append(field('Add', token));
-
-  const save = button('Save');
-  save.addEventListener('click', () =>
-    guard(save, async () => {
-      if (!(await consent(['authenticationInfo']))) {
-        flash('not allowed');
-        return;
-      }
-      const result = await ask({ type: 'gitchop:token:save', token: token.value });
-      flash('saved');
-      render(result);
-      current = result;
-      onTokenChange();
-    }),
+function backupIntro() {
+  return element(
+    'p',
+    'note',
+    'Your links live in this browser’s profile and go with the extension if it is removed. Backup ' +
+      'writes them to a secret gist on every change, and the gist’s revision history is the safety net.',
   );
-
-  const actions = element('div', 'actions');
-  actions.append(save);
-  const wrap = element('div', 'add-token');
-  wrap.append(fields, actions);
-  return wrap;
 }
 
-function tokenOnly(sync, error) {
+/** Without a token there is nothing to write the gist with, so the card only says what it would take. */
+function backupNeedsToken() {
   const wrap = element('div', 'card-body');
-  wrap.append(tokenList(sync));
-  const warn = broadWarning(sync);
-  if (warn) wrap.append(warn);
   wrap.append(
+    backupIntro(),
     element(
       'p',
       'note',
-      'The token is in place, so private repository search works as soon as the index below is built. ' +
-        'Backup is separate and off: switch it on and your links are written to a secret gist on every ' +
-        'change, with the gist’s revision history as the safety net.',
+      'It needs a token first: add one above. A fine-grained token for your own account, made with the ' +
+        'owner left blank, can write the gist; so can a classic token with gist. gitchop uses whichever ' +
+        'saved token can.',
+    ),
+  );
+  return wrap;
+}
+
+function backupOff(sync, error) {
+  const wrap = element('div', 'card-body');
+  wrap.append(
+    backupIntro(),
+    element(
+      'p',
+      'note',
+      'Leave the field empty and a new secret gist is made from your current links. Paste the id of a ' +
+        'gist gitchop made before to adopt it instead; the list in it replaces this one.',
     ),
   );
 
@@ -297,33 +415,29 @@ function tokenOnly(sync, error) {
 
   const enable = button('Enable backup', { primary: true });
   enable.addEventListener('click', () =>
-    guard(enable, async () => {
+    guard(enable, 'backup', async (flash) => {
       if (!(await consent(['bookmarksInfo']))) {
         flash('not allowed');
         return;
       }
       const result = await ask({ type: 'gitchop:sync:connect', gistId: gist.value });
       flash('backing up');
-      render(result);
       current = result;
+      render(result);
     }),
   );
 
   const actions = element('div', 'actions');
   actions.append(enable);
 
-  wrap.append(addAnother(), fields);
+  wrap.append(fields);
   if (error ?? sync.lastError) wrap.append(element('p', 'error', error ?? sync.lastError));
   wrap.append(actions);
   return wrap;
 }
 
-function connected(sync, error) {
+function backupOn(sync, error) {
   const wrap = element('div', 'card-body');
-
-  wrap.append(tokenList(sync));
-  const warn = broadWarning(sync);
-  if (warn) wrap.append(warn);
   wrap.append(
     facts([
       ['Gist', link(sync.gistId, sync.gistUrl)],
@@ -335,7 +449,7 @@ function connected(sync, error) {
   const pull = button('Pull now');
   pull.title = 'Replace the local list with the gist';
   pull.addEventListener('click', () =>
-    guard(pull, async () => {
+    guard(pull, 'backup', async (flash) => {
       if (sync.dirty && !confirm('There are local changes that have not reached the gist yet. Pull anyway and lose them?')) return;
       const result = await ask({ type: 'gitchop:sync:pull', force: true });
       flash(result.changed ? 'pulled' : 'already current');
@@ -346,7 +460,7 @@ function connected(sync, error) {
   const push = button('Push now');
   push.title = 'Write the local list to the gist';
   push.addEventListener('click', () =>
-    guard(push, async () => {
+    guard(push, 'backup', async (flash) => {
       const result = await ask({ type: 'gitchop:sync:push', force: true });
       flash(result.changed ? 'pushed' : 'already current');
       await load();
@@ -356,30 +470,38 @@ function connected(sync, error) {
   const stop = button('Stop backup');
   stop.title = 'Leave the gist alone and stop writing to it';
   stop.addEventListener('click', () =>
-    guard(stop, async () => {
+    guard(stop, 'backup', async (flash) => {
       if (!confirm('Stop backing up to the gist? Your tokens and the gist itself are left alone.')) return;
       const result = await ask({ type: 'gitchop:sync:stop' });
       flash('stopped');
-      render(result);
       current = result;
+      render(result);
     }),
   );
 
   const actions = element('div', 'actions');
   actions.append(stop, pull, push);
 
-  wrap.append(addAnother());
-
   if (error ?? sync.lastError) wrap.append(element('p', 'error', error ?? sync.lastError));
   wrap.append(actions);
   return wrap;
 }
 
-function render(sync, error) {
-  host.textContent = '';
-  if (sync?.connected) host.append(connected(sync, error));
-  else if (sync?.hasToken) host.append(tokenOnly(sync, error));
-  else host.append(noToken(error));
+/**
+ * Both cards are drawn from the one state the background keeps. An error is shown on the card whose
+ * button produced it; the background's own lastError is the gist's, so the backup card carries that.
+ */
+function render(sync, error, card = 'token') {
+  const tokenError = card === 'token' ? error : null;
+  const backupError = card === 'backup' ? error : null;
+
+  tokenHost.textContent = '';
+  tokenHost.append(sync?.hasToken ? tokenCard(sync, tokenError) : noToken(tokenError));
+
+  backupHost.textContent = '';
+  if (sync?.connected) backupHost.append(backupOn(sync, backupError));
+  else if (sync?.hasToken) backupHost.append(backupOff(sync, backupError));
+  else backupHost.append(backupNeedsToken());
 }
 
 export async function load() {
