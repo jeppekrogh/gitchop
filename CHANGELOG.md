@@ -6,20 +6,22 @@ it from.
 ## Unreleased
 
 - **Your contributions this year, in the head of the menu.** With a token saved, the number your
-  profile prints for the year — *1 234 contributions in 2026* — sits beside the title, each digit a
-  reel that spins in as the panel rises — a whole turn and on to its digit, the leftmost stopping
-  first and each to its right a beat later, as a slot machine's do. It paints from its last
-  snapshot; a menu opened on one older than five minutes asks GitHub again behind it, and a count
-  that has grown since rolls its last digits on, so the day's work is seen to land rather than
-  blinked in. A nine rolling over keeps going up. Hovering the number hangs the totals for the three
-  years before it beneath, so this year has something to stand beside; it is not a link. Reduced
-  motion shows the numbers plainly. It is one GraphQL request per saved token — the calendar total
-  from January the 1st to now, and each of the three whole years before under its own alias, so a
-  year GitHub refuses is a year left out rather than a failed answer — and the highest count for
-  this year wins, its past years with it, since a fine-grained token sees fewer repositories than a
-  classic one and may count fewer. Years before the account existed are left out rather than shown
-  as nought. A **Contributions** card in Settings has the switch, the numbers, when they were
-  refreshed, and a **Refresh now**. Removing the last token deletes the snapshot with the rest. (#7)
+  profile prints for the year — *1 234 contributions in 2026* — sits beside the title, dealt out a
+  digit at a time: the first reel spins onto its digit the moment the panel is up, and each reel to
+  its right waits blank until its turn, then spins a whole turn onto its own, 800 ms after the one
+  before. A count that arrives while the digits are still being dealt keeps the cadence and only
+  changes where the reels stop. It paints from its last snapshot; a menu opened on one older than
+  five minutes asks GitHub again behind it, and a count that has grown since rolls its last digits
+  on, so the day's work is seen to land rather than blinked in. A nine rolling over keeps going up.
+  Hovering the number hangs the totals for the three years before it beneath, so this year has
+  something to stand beside; it is not a link. Reduced motion shows the numbers plainly. It is one
+  GraphQL request per saved token — the calendar total from January the 1st to now, and each of the
+  three whole years before under its own alias, so a year GitHub refuses is a year left out rather
+  than a failed answer — and the highest count for this year wins, its past years with it, since a
+  fine-grained token sees fewer repositories than a classic one and may count fewer. Years before
+  the account existed are left out rather than shown as nought. A **Contributions** card in Settings
+  has the switch, the numbers, when they were refreshed, and a **Refresh now**. Removing the last
+  token deletes the snapshot with the rest. (#7)
 
 ## 2.5.0
 

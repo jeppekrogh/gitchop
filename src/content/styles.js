@@ -236,8 +236,8 @@ window.__gitchop.CSS = `
 /*
  * The year's contributions, in the head beside the title, as the profile prints them. Each digit
  * is a reel: a strip of glyphs sliding behind a window one digit tall, so a change rolls rather
- * than blinks and the first paint spins in once the panel is on screen, the reels stopping one
- * after another as a slot machine's do. The strip
+ * than blinks and the first paint is dealt out a digit at a time once the panel is on screen, the
+ * first at once and each next one a beat later. The strip
  * moves by a percentage of its own height, so the digit's size is written once, here, and the
  * head stays exactly as tall as its title. It is not a link: hovering it hangs the years before
  * this one beneath, and that is all.
@@ -268,10 +268,11 @@ window.__gitchop.CSS = `
   overflow: hidden;
 }
 
-/* Each reel is given its own roll time by the script, the leftmost the shortest, so they stop in turn. */
+/* The script times each reel's roll and its wait, so the digits are dealt out one at a time. */
 .gc-odo-reel {
   display: block;
-  transition: transform var(--gc-odo-roll, 800ms) cubic-bezier(0.2, 0.7, 0.15, 1);
+  transition: transform var(--gc-odo-roll, 600ms) cubic-bezier(0.2, 0.7, 0.15, 1);
+  transition-delay: var(--gc-odo-delay, 0ms);
   will-change: transform;
 }
 
