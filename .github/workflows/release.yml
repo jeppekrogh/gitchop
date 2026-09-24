@@ -32,6 +32,8 @@ jobs:
           node dev/effects.test.mjs
           node dev/pulls.test.mjs
           node dev/news.test.mjs
+          node dev/contributions.test.mjs
+          node dev/odometer.test.mjs
 
       # A tag that disagrees with the manifest ships a package the stores will reject as a duplicate
       # version, or worse, silently reuses one. Cheaper to stop here.

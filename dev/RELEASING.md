@@ -75,8 +75,8 @@ Upload `gitchop-<version>-chrome.zip` as a new item, then fill in:
   - `alarms` — refreshes the pull requests every few minutes for the badge, and makes up the news
     edition once a day.
   - `github.com` host access — the content script that the `.` key runs on.
-  - `api.github.com` host access — repository search, the pull requests, the news and the gist
-    backup, all called from the background script.
+  - `api.github.com` host access — repository search, the pull requests, the news, the year's
+    contributions and the gist backup, all called from the background script.
 - **Remote code**: no. Everything executed ships in the package.
 - **Data usage**: declare what `PRIVACY.md` already describes, and link it as the privacy policy.
 

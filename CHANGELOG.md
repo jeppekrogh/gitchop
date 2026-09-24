@@ -15,7 +15,8 @@ it from.
   folds away under a heading. The recipe stays at the top once tokens are saved, and the saved tokens
   are listed beneath it, so what is pasted appears right below where it was pasted and the card does
   not reshuffle when the first token lands; a second organisation is the same three steps again.
-- Backup has a card of its own in Settings, after News, with its own status corner. It used to share
+- Backup has a card of its own in Settings, the last before the placeholders, with its own status
+  corner. It used to share
   the token card, so the gist field and its buttons ran on from the token rows. Without a token the
   card says what backup would take; with one, the gist field and the switch; connected, the gist and
   the last pull and push, with the pull, push and stop. A failure shows on the card whose button
@@ -25,8 +26,8 @@ it from.
   requests, Issues and Contents read-only, and Gists for the backup when the token is the account's
   own — so only the repositories are left to choose. The owner is named in a field beside the link
   and travels with it, because GitHub clears every tick the moment the owner is changed on the form
-  itself. The same link sits under **Add** once a token is in place, which is where the second
-  organisation's token is made. Metadata read-only alone was enough for the index but left the pull
+  itself. The same recipe stays at the top of the card once a token is in place, which is where the
+  second organisation's token is made. Metadata read-only alone was enough for the index but left the pull
   request lanes empty and the news from a private repository failing, and the form gave no hint of
   which of the forty-odd permissions gitchop actually reads.
 - A saved fine-grained token is listed under the owner it reaches, read off the private repositories
@@ -40,6 +41,24 @@ it from.
   the private count gives it away. Classic tokens keep the login: they are the account's and cover
   everything it can reach. Tokens saved before this learn their owner the next time the index is
   built.
+- **Your contributions this year, in the head of the menu.** With a token saved, the number your
+  profile prints for the year — *1234 contributions in 2026* — sits beside the title, spun in like a
+  slot machine's: every reel sets off the moment the panel is up and they stop one at a time, left
+  to right — the first as good as at once, each to its right 600 ms after the one before, each
+  turning as many times on the way as keeps the whole row at one slow, readable pace. A count that
+  arrives while they are still turning keeps every stop where it was and only changes the digit each
+  reel stops on. It paints from its last snapshot; a menu opened on one older than five minutes asks
+  GitHub again behind it, and a count that has grown since rolls its last digits on, so the day's
+  work is seen to land rather than blinked in. A nine rolling over keeps going up. Hovering the
+  number hangs the totals for the three years before it beneath, so this year has something to stand
+  beside; it is not a link. Reduced motion shows the numbers plainly. It is one GraphQL request per
+  saved token — the calendar total from January the 1st to now, and each of the three whole years
+  before under its own alias, so a year GitHub refuses is a year left out rather than a failed
+  answer — and the highest count for this year wins, its past years with it, since a fine-grained
+  token sees fewer repositories than a classic one and may count fewer. Years before the account
+  existed are left out rather than shown as nought. A **Contributions** card in Settings has the
+  switch, the numbers, when they were refreshed, and a **Refresh now**. Removing the last token
+  deletes the snapshot with the rest. (#7)
 
 ## 2.5.0
 
