@@ -12,6 +12,12 @@ window.__gitchop = window.__gitchop || {};
   const GAP = 800;
   /** How long a digit takes to tick on when a number already showing changes. */
   const TICK = 600;
+  /**
+   * How long one whole turn takes at spinning pace: a reel that stops later turns more times on
+   * the way, about one a second, so the whole row spins at much the same, unhurried speed.
+   */
+  const TURN = 1000;
+  const turnsFor = (i) => Math.max(1, Math.round((FIRST + i * GAP) / TURN));
   /** A spin runs near enough flat out and brakes at the end; a tick eases out from the start. */
   const SPIN_EASE = 'cubic-bezier(0.35, 0.35, 0.6, 1)';
   const TICK_EASE = 'cubic-bezier(0.2, 0.7, 0.15, 1)';
@@ -33,13 +39,13 @@ window.__gitchop = window.__gitchop || {};
    * A number's first appearance is a slot machine's: every reel starts spinning the moment the
    * panel is up and they stop one at a time, left to right — the first as good as at once, each
    * to its right a beat after the one before. A reel that stops later turns more times on the way,
-   * so they all spin at much the same pace. A number arriving while they are still turning keeps
+   * about one a second, so they all spin at much the same pace. A number arriving while they are still turning keeps
    * every stop where it was and only changes the digit each reel stops on. A change to a number
    * already showing is a tick instead — the digits that moved roll straight to where they are
    * going, always upward. Reduced motion has no reels to speak of: the digits are placed.
    *
-   * The strip is a blank and then as many runs of the digits as the reels need turns, one more
-   * than there are reels, so the last reel has a whole run left to tick into once it has landed.
+   * The strip is a blank and then as many runs of the digits as the last reel needs turns, and one
+   * more, so it has a whole run left to tick into once it has landed.
    * It moves by a percentage of its own height, so no pixel size is written here and the
    * stylesheet alone decides how tall a digit is. A reel that has rolled past the first run is put
    * back into it, without moving, once its roll has ended, so there is always room to roll up again.
@@ -87,14 +93,15 @@ window.__gitchop = window.__gitchop || {};
     function build(count, from) {
       element.textContent = '';
       reels = [];
-      cells = BLANK + DIGITS.length * (count + 1);
+      const runs = turnsFor(count - 1) + 1;
+      cells = BLANK + DIGITS.length * runs;
       const start = from.slice(-count).padStart(count, ' ');
       for (let i = 0; i < count; i += 1) {
         if (i > 0 && (count - i) % 3 === 0) element.append(node('span', 'gc-odo-sep'));
         const digit = node('span', 'gc-odo-digit');
         const reel = node('span', 'gc-odo-reel');
         reel.append(node('span', null, ''));
-        for (let run = 0; run <= count; run += 1) {
+        for (let run = 0; run < runs; run += 1) {
           for (const glyph of DIGITS) reel.append(node('span', null, glyph));
         }
         reel.addEventListener('transitionend', () => settle(reel));
@@ -110,7 +117,7 @@ window.__gitchop = window.__gitchop || {};
 
     /**
      * Every reel to its digit. A spin sets every reel off at once, each to stop in turn after as
-     * many whole turns as its place in the row, and writes down when it lands; a reel still
+     * many whole turns as its spinning time allows, and writes down when it lands; a reel still
      * turning when a new number comes keeps that landing and takes the new digit. Anything else is
      * a tick: straight there, always upward, into the next run when the digit is behind it.
      */
@@ -124,7 +131,7 @@ window.__gitchop = window.__gitchop || {};
         }
         let at = Number(reel.dataset.at) || 0;
         const landAt = Number(reel.dataset.landAt);
-        const stop = cellOf(wanted) + DIGITS.length * (i + 1);
+        const stop = cellOf(wanted) + DIGITS.length * turnsFor(i);
 
         if (spin && at < BLANK) {
           const duration = FIRST + i * GAP;

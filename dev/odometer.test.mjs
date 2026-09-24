@@ -63,8 +63,9 @@ function load({ reduced = false } = {}) {
   return window.__gitchop.createOdometer();
 }
 
-// The strip is a blank and then one more run of the digits than there are reels: cell 0 is blank,
-// digit d is cell 1 + d in the first run, 11 + d in the second, and so on.
+// The strip is a blank and then one more run of the digits than the last reel has turns — about
+// one a second of its spin: cell 0 is blank, digit d is cell 1 + d in the first run, 11 + d in the
+// second, and so on.
 const BLANK = 1;
 const reels = (odo) => odo.element.children.filter((child) => child.className === 'gc-odo-digit').map((digit) => digit.children[0]);
 const at = (odo) => reels(odo).map((reel) => Number(reel.dataset.at));
@@ -86,10 +87,10 @@ odo.set(1234);
 assert.equal(shape(odo), 'd|ddd', 'a thousands gap, no comma');
 assert.deepEqual(at(odo), [0, 0, 0, 0], 'blank until revealed');
 assert.equal(showing(odo), '    ');
-assert.equal(reels(odo)[0].children.length, 51, 'a blank and five runs of the digits for four reels');
+assert.equal(reels(odo)[0].children.length, 41, 'a blank and four runs: the last reel spins 2.55 s, three turns, and a run to tick into');
 assert.equal(reels(odo)[0].children[0].textContent, '', 'the first cell is the blank');
 assert.equal(reels(odo)[0].children[1].textContent, '0');
-assert.equal(reels(odo)[0].children[50].textContent, '9');
+assert.equal(reels(odo)[0].children[40].textContent, '9');
 assert.equal(odo.element.attributes['aria-hidden'], 'true', 'the reels are decoration; the label around them reads');
 
 // A later set before the reveal only changes where the reels will stop.
@@ -97,11 +98,11 @@ odo.set(1226);
 assert.deepEqual(at(odo), [0, 0, 0, 0]);
 
 // Revealed: every reel sets off at once and stops in turn — the first as good as at once, each to
-// its right 800 ms after the one before, having turned once more on the way.
+// its right 800 ms after the one before, turning about once a second on the way.
 odo.reveal();
-assert.deepEqual(at(odo), [12, 23, 33, 47], 'one, two, three and four whole turns, then the digit');
+assert.deepEqual(at(odo), [12, 13, 23, 37], 'one, one, two and three whole turns, then the digit');
 assert.equal(showing(odo), '1226');
-assert.equal(percent(reels(odo)[3]), 'translateY(-92.16%)', 'a cell is a fifty-first of the strip');
+assert.equal(percent(reels(odo)[3]), 'translateY(-90.24%)', 'a cell is a forty-first of the strip');
 assert.deepEqual(durations(odo), [150, 950, 1750, 2550], 'they stop 800 ms apart, the first almost at once');
 assert.deepEqual(delays(odo), [0, 0, 0, 0], 'and all start together');
 assert.deepEqual(eases(odo), [SPIN_EASE, SPIN_EASE, SPIN_EASE, SPIN_EASE], 'flat out, then the brake');
@@ -111,7 +112,7 @@ assert.equal(reels(odo)[3].style.transition, '', 'the roll uses the stylesheet t
 // A number arriving while the reels are still turning keeps every stop where it was and only
 // changes the digit each reel stops on.
 odo.set(1234);
-assert.deepEqual(at(odo), [12, 23, 34, 45], 'the same turns, new digits');
+assert.deepEqual(at(odo), [12, 13, 24, 35], 'the same turns, new digits');
 assert.equal(showing(odo), '1234');
 const left = durations(odo);
 near(left[0], 150, 'the first still stops when it was going to');
@@ -148,7 +149,7 @@ odo.set(1253);
 assert.deepEqual(at(odo), [2, 3, 6, 14], 'nine to three: up four, into the second run');
 odo.set(1259);
 assert.deepEqual(at(odo), [2, 3, 6, 20], 'three to nine within the second run');
-reels(odo)[3].dataset.at = '50';
+reels(odo)[3].dataset.at = '40';
 odo.set(1252);
 assert.deepEqual(at(odo), [2, 3, 6, 13], 'from the last cell, a nine: no room above, so back to the first run and up three');
 assert.equal(showing(odo), '1252');
@@ -157,7 +158,7 @@ assert.equal(showing(odo), '1252');
 // rolls straight onto its digit while the rest roll on from theirs. The strip grows a run with them.
 odo.set(10000);
 assert.equal(shape(odo), 'dd|ddd');
-assert.equal(reels(odo)[0].children.length, 61, 'six runs for five reels');
+assert.equal(reels(odo)[0].children.length, 41, 'still four runs for five reels: the fifth spins 3.35 s, three turns');
 assert.deepEqual(at(odo), [2, 11, 11, 11, 11], 'blank straight to one; one, two, five and two each up to the nought that begins the second run');
 assert.equal(showing(odo), '10000');
 assert.deepEqual(durations(odo), [600, 600, 600, 600, 600], 'a tick, not a spin');
@@ -165,7 +166,7 @@ assert.deepEqual(durations(odo), [600, 600, 600, 600, 600], 'a tick, not a spin'
 // Fewer digits again is a rebuild too, standing on the tail of the old number.
 odo.set(99);
 assert.equal(shape(odo), 'dd');
-assert.equal(reels(odo)[0].children.length, 31);
+assert.equal(reels(odo)[0].children.length, 21, 'two runs for two reels: the second spins under a second, one turn');
 assert.deepEqual(at(odo), [10, 10], 'from the two noughts at the end of ten thousand, up nine each');
 
 // Not known yet is a shimmer; a number arriving afterwards spins in like a first one.
@@ -200,7 +201,7 @@ assert.equal(showing(odo), '12');
 odo.set(1000000);
 assert.equal(shape(odo), 'd|ddd|ddd', 'a gap every three digits');
 assert.equal(showing(odo), '1000000');
-assert.equal(reels(odo)[0].children.length, 81, 'eight runs for seven reels');
+assert.equal(reels(odo)[0].children.length, 61, 'six runs for seven reels: the seventh spins 4.95 s, five turns');
 
 // Reduced motion: no holding, no spinning, no rolling — the digits are placed the moment they are known.
 odo = load({ reduced: true });
