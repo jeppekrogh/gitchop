@@ -233,6 +233,76 @@ window.__gitchop.CSS = `
   color: var(--gc-heading);
 }
 
+/*
+ * The year's contributions, in the head beside the title, as the profile prints them. Each digit
+ * is a reel: a strip of glyphs sliding behind a window one digit tall, so a change rolls rather
+ * than blinks and the first paint spins in like a slot machine's once the panel is on screen, every
+ * reel turning at once and stopping in turn, the first at once and each next one a beat later. The strip
+ * moves by a percentage of its own height, so the digit's size is written once, here, and the
+ * head stays exactly as tall as its title. It is not a link: hovering it hangs the years before
+ * this one beneath, and that is all.
+ */
+.gc-count {
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: inherit;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.gc-odo {
+  display: inline-flex;
+  align-items: center;
+  height: 11px;
+  font: 600 12px/11px var(--gc-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--gc-text);
+}
+
+.gc-odo-digit {
+  display: block;
+  height: 11px;
+  overflow: hidden;
+}
+
+/* The script times each reel's roll, so they spin together and stop one at a time. */
+.gc-odo-reel {
+  display: block;
+  transition: transform var(--gc-odo-roll, 600ms) var(--gc-odo-ease, cubic-bezier(0.2, 0.7, 0.15, 1));
+  transition-delay: var(--gc-odo-delay, 0ms);
+  will-change: transform;
+}
+
+.gc-odo-reel > span {
+  display: block;
+  height: 11px;
+  line-height: 11px;
+}
+
+.gc-odo-bar {
+  width: 2.8em;
+  height: 7px;
+}
+
+.gc-count-label {
+  font: 400 10px/1 var(--gc-mono);
+  letter-spacing: 0.03em;
+  color: var(--gc-dim);
+}
+
+/* Taken down when there is no number to show; the class above would otherwise outrank the attribute. */
+.gc-count[hidden] {
+  display: none;
+}
+
+/* Lit while the mouse is on it, since the years before this one hang under it then. */
+.gc-count:hover .gc-count-label {
+  color: var(--gc-text);
+}
+
 .gc-filter {
   width: 100%;
   border: 0;
@@ -332,7 +402,8 @@ window.__gitchop.CSS = `
     animation: none;
   }
 
-  .gc-pop {
+  .gc-pop,
+  .gc-odo-reel {
     transition: none;
   }
 }
@@ -744,5 +815,21 @@ a.gc-pop-item:hover {
 .gc-pop-item--more .gc-pop-title {
   font: 400 11px/1.2 var(--gc-mono);
   color: var(--gc-dim);
+}
+
+/*
+ * The years before this one, under the number in the head and right edge to right edge with it:
+ * the news popover's card and rows, a year where the title goes and its total where the detail
+ * goes — spaced as the reels space theirs, and in the text colour, since here the figure is the
+ * point. It hangs from the same bridge but takes no pointer: there is nothing in it to click, so it
+ * is a tooltip that goes when the mouse leaves the number. The script sets right and top.
+ */
+.gc-pop--years[data-shown="true"] {
+  pointer-events: none;
+}
+
+.gc-pop--years .gc-pop-detail {
+  font-size: 11px;
+  color: var(--gc-text);
 }
 `;

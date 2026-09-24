@@ -126,6 +126,21 @@ before. Public repositories need no token; a private one is fetched with whichev
 can see it, and says so in Settings when none can. Three columns need about 1280 px; below that
 the news steps out first and the menu is what it was.
 
+## Contributions
+
+With a token saved, the head of the menu carries the number your profile prints for the year —
+*1234 contributions in 2026* — beside the title, spun in like a slot machine's: every reel turns
+from the moment the panel is up and they stop one at a time, left to right, the first at once and
+each next one a beat later. It paints from its last snapshot; when the menu opens on one older than five minutes it
+asks GitHub again behind it, and a count that has grown since rolls its last digits on, so the day's
+work is seen to arrive. Hovering the number shows the totals for the three years before it, so this
+year has something to stand beside. It is not a link; it is there to be looked at.
+
+It is one GraphQL request per saved token, asking for this year from January the 1st to now and for
+each of the three whole years before, and the highest count for this year is the one shown, its past
+years with it — a fine-grained token sees fewer repositories than a classic one and may count fewer.
+Settings has a switch for it, the numbers, when they were last refreshed, and a **Refresh now**.
+
 ## Backup
 
 Links live in the browser profile, and go with the extension if you remove it. Connect a secret gist
@@ -139,7 +154,7 @@ No build step for the code — the files in `src/` are what runs. Packaging only
 `manifest.json` each browser gets, since the two disagree about the background script.
 
 ```sh
-node dev/context.test.mjs && node dev/repos.test.mjs && node dev/effects.test.mjs && node dev/pulls.test.mjs && node dev/news.test.mjs
+node dev/context.test.mjs && node dev/repos.test.mjs && node dev/effects.test.mjs && node dev/pulls.test.mjs && node dev/news.test.mjs && node dev/contributions.test.mjs && node dev/odometer.test.mjs
 node dev/build.mjs all                                 # dist/gitchop-<version>-<browser>.<ext>
 node dev/build.mjs chrome --no-zip                     # unpacked, for chrome://extensions
 open dev/harness.html                                  # the menu, without installing

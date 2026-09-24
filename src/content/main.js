@@ -86,9 +86,15 @@ window.__gitchop = window.__gitchop || {};
     stage.chop();
     window.addEventListener('resize', onResize);
 
-    // The pull requests and the news answer from their snapshots, so this is storage reads only; no
-    // request holds the menu up, and a background that cannot answer simply means no column this time.
-    const [links, pulls, news] = await Promise.all([readLinks(), ask({ type: 'gitchop:pulls' }), ask({ type: 'gitchop:news' })]);
+    // The pull requests, the news and the contributions answer from their snapshots, so this is
+    // storage reads only; no request holds the menu up, and a background that cannot answer simply
+    // means no column, and no number, this time.
+    const [links, pulls, news, contributions] = await Promise.all([
+      readLinks(),
+      ask({ type: 'gitchop:pulls' }),
+      ask({ type: 'gitchop:news' }),
+      ask({ type: 'gitchop:contributions' }),
+    ]);
     if (state.stage !== stage) return;
 
     const ctx = gc.readContext();
@@ -97,6 +103,7 @@ window.__gitchop = window.__gitchop || {};
       links,
       pulls: pulls?.ok ? pulls : null,
       news: news?.ok ? news : null,
+      contributions: contributions?.ok ? contributions : null,
       onClose: closeChop,
       onOptions: () => {
         ask({ type: 'gitchop:options' });
@@ -111,7 +118,10 @@ window.__gitchop = window.__gitchop || {};
       if (event.target === stage.menuLayer || event.target === menu.element) closeChop();
     });
 
-    stage.revealPanel(menu.element);
+    // The reels in the head roll once the panel is where the roll can be seen.
+    stage.revealPanel(menu.element).then(() => {
+      if (state.menu === menu) menu.revealed();
+    });
     menu.focus();
   }
 

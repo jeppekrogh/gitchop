@@ -19,6 +19,8 @@ tasks:
       - node dev/effects.test.mjs
       - node dev/pulls.test.mjs
       - node dev/news.test.mjs
+      - node dev/contributions.test.mjs
+      - node dev/odometer.test.mjs
 
   build:
     desc: Package the extension for every browser, or one — `task build -- chrome --no-zip` for an unpacked one

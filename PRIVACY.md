@@ -15,6 +15,7 @@ of any kind beyond GitHub itself.
 | Your open pull requests — title, number, repository, author, review state | `storage.local` | No — never sent anywhere |
 | The repositories you subscribe to for news, as `owner/name` | `storage.sync` | No — it travels with the profile, as the links do |
 | The day's news for them — commit counts and authors, the first line of the latest commit message, pull request, issue and release titles | `storage.local` | No — never sent anywhere |
+| Your contributions — this year's count, the three whole years before it, and your login | `storage.local` | No — never sent anywhere |
 | Which gist to use, and when it last synced | `storage.local` | No |
 
 The repository list holds names, URLs, descriptions and the private and archived flags — the same
@@ -23,11 +24,13 @@ found by typing, which GitHub's search will not do, and so that matching costs n
 written on this machine and read on this machine. **Clear** in the settings page deletes it, and
 removing the token deletes it too.
 
-gitchop never reads repository contents or code. Beyond the repository list it asks GitHub for two
-more things: the open pull requests you are party to, for the column beside the menu, and — only for
-repositories you have subscribed to — what happened in them lately, for the news column. Both are
-titles and states: the first line of a commit message, the title of a pull request, an issue or a
-release, who and when. Never a diff, a file, or a comment.
+gitchop never reads repository contents or code. Beyond the repository list it asks GitHub for three
+more things: the open pull requests you are party to, for the column beside the menu; what happened
+lately in the repositories you have subscribed to, and only those, for the news column; and the
+numbers your profile prints for the year's contributions and the three years before, for the head of
+the menu. The first two are titles and states: the first line of a commit message, the title of a
+pull request, an issue or a release, who and when. Never a diff, a file, or a comment. The third is
+four counts and nothing else.
 
 The token is kept in `storage.local` rather than `storage.sync` specifically so that it is never
 handed to Mozilla's sync servers. Every request to GitHub is made from the extension's background
@@ -57,6 +60,15 @@ counts, names, titles and timestamps, kept in `storage.local` for the menu, and 
 Unsubscribing drops the repository from the next edition; switching the news off in Settings stops
 the requests; removing the last token deletes the edition, so what a token saw of a private
 repository does not outlive it.
+
+**Contributions, if a token is saved.** When the menu opens with a snapshot older than five minutes,
+or one from another year, and when **Refresh now** in Settings asks, gitchop asks GitHub's GraphQL
+API in one request for four numbers: the total on your contribution calendar from January the 1st to
+now, and the total for each of the three whole years before, together with your login and the date
+the account was made — which says which of those years existed. Every saved token is asked and the
+highest answer for this year kept. The numbers are kept in `storage.local` for the menu and are
+never sent anywhere. Switching the contributions off in Settings stops the requests; removing the
+last token deletes the snapshot.
 
 **Sync, only if you connect it.** Your link list is written to a secret gist on your own account, and
 read back from it. That is the entire payload: the icons, labels and URLs you entered. Firefox asks
@@ -88,7 +100,7 @@ is unlisted, not private — anyone with the URL can read it, so keep the gist i
 | `storage` | Keeping your links and settings |
 | `alarms` | Refreshing the pull requests every few minutes, so the badge is right before the key is pressed, and making up the news edition once a day |
 | `https://github.com/*` | Running the menu on GitHub pages |
-| `https://api.github.com/*` | Repository search and listing, the pull requests, the news, and reading and writing your gist |
+| `https://api.github.com/*` | Repository search and listing, the pull requests, the news, the year's contributions, and reading and writing your gist |
 
 There is no `tabs` permission, no `<all_urls>`, and no host beyond those two.
 
@@ -99,9 +111,10 @@ belong to with no approval from anyone. Leave `gist` off if you do not want the 
 
 Be clear about the trade: classic tokens have **no read-only scope for private repositories**. `repo`
 is the only scope that lists them, and it also grants write to every repository the account can reach.
-gitchop only ever reads with it — five calls, no others: who the account is, which repositories it
+gitchop only ever reads with it — six calls, no others: who the account is, which repositories it
 can see, which open pull requests are yours or want your review, what happened lately in the
-repositories you subscribe to, and reading and writing the one gist. But the token itself can do
+repositories you subscribe to, how many contributions this year and the three before have on your
+calendar, and reading and writing the one gist. But the token itself can do
 more than gitchop does with it, so put an expiry on it and revoke it if you stop using gitchop.
 
 **Fine-grained tokens** grant less: **Metadata: Read-only** lists private repositories without any
