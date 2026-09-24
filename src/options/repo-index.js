@@ -2,6 +2,8 @@ import { api } from '../lib/links.js';
 
 const host = document.getElementById('index');
 const statusEl = document.getElementById('index-status');
+/** Under the card: what is worth knowing about the index as it stands. */
+const notes = document.getElementById('index-notes');
 
 let statusTimer = null;
 let busy = false;
@@ -59,18 +61,10 @@ async function guard(node, work) {
 
 function render(index, error) {
   host.textContent = '';
+  notes.textContent = '';
   const wrap = element('div', 'card-body');
 
-  wrap.append(
-    element(
-      'p',
-      'note',
-      'GitHub’s search will not show you private repositories, so gitchop keeps its own list of the ' +
-        'repositories your token can reach and matches that first. It is held on this machine only, it ' +
-        'answers instantly with no request per keystroke, and it covers private repositories that search ' +
-        'cannot see.',
-    ),
-  );
+  if (!(index && index.count > 0)) wrap.append(element('p', 'empty', 'No index built yet.'));
 
   if (index && index.count > 0) {
     const facts = element('dl', 'facts');
@@ -85,13 +79,12 @@ function render(index, error) {
     }
     wrap.append(facts);
 
-    wrap.append(
+    notes.append(
       element(
         'p',
         'note',
-        'Check that list. An organisation missing from it is an organisation the token was never granted, ' +
-          'or one whose owner has not approved the token yet — the request succeeds either way and simply ' +
-          'returns less, which is the one failure GitHub will not tell you about.',
+        'An organisation missing from the list is one the token was never granted, or whose owner has ' +
+          'not approved it yet; GitHub returns less rather than an error.',
       ),
     );
 
@@ -100,9 +93,8 @@ function render(index, error) {
         element(
           'p',
           'error',
-          'No private repositories came back. The token can list repositories but cannot see private ones: ' +
-            'a fine-grained token needs Metadata read-only, and the organisation it was created for has to ' +
-            'be its resource owner.',
+          'No private repositories came back. A fine-grained token needs Metadata: read-only, with the ' +
+            'organisation as its resource owner.',
         ),
       );
     }

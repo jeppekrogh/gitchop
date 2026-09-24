@@ -3,6 +3,8 @@ import { HOUR, SWITCHES, isRepoName, proseText } from '../lib/news.js';
 
 const host = document.getElementById('news');
 const statusEl = document.getElementById('news-status');
+/** Under the card: what is worth knowing about the settings as they stand. */
+const notes = document.getElementById('news-notes');
 
 let statusTimer = null;
 let busy = false;
@@ -203,20 +205,8 @@ function addRepo() {
 
 function render(state, error) {
   host.textContent = '';
+  notes.textContent = '';
   const wrap = element('div', 'card-body');
-
-  wrap.append(
-    element(
-      'p',
-      'note',
-      'A column on the far side of the menu with what happened in the repositories you follow, told ' +
-        'in a few sentences each — a release, the commits and who made them, the pull requests merged ' +
-        'and opened, the issues. Every fact is a chip: hover it and what it is made of unfolds ' +
-        'beneath, every line a link. It is a morning paper rather than a feed — made up once a day at ' +
-        'the hour below, covering everything since the previous edition, and left alone until the ' +
-        'next. It is read with the mouse; the keys stay with the links and the pull requests.',
-    ),
-  );
 
   if (!state) {
     if (error) wrap.append(element('p', 'error', error));
@@ -237,12 +227,12 @@ function render(state, error) {
     facts.append(element('dt', null, 'Fetched'), element('dd', null, when(state.fetchedAt)));
     wrap.append(facts);
   } else {
-    wrap.append(
+    notes.append(
       element(
         'p',
         'note',
-        'Nothing subscribed yet. In the menu, → on any repository row and choose Subscribe to news; on a ' +
-          'repository page the same command sits in the list under Do. Or name one here.',
+        'Nothing subscribed yet. In the menu, → on a repository row and choose Subscribe to news, or ' +
+          'name one above.',
       ),
     );
   }
@@ -251,13 +241,12 @@ function render(state, error) {
 
   if (error) wrap.append(element('p', 'error', error));
 
-  wrap.append(
+  notes.append(
     element(
       'p',
       'note',
-      'Public repositories need no token. A private one is fetched with whichever saved token can see ' +
-        'it — repo on a classic token, Contents, Pull requests and Issues read-only on a fine-grained ' +
-        'one — and says so here when none can.',
+      'Public repositories need no token. A private one needs a saved token that can see it: repo on ' +
+        'a classic token, or Contents, Pull requests and Issues read-only on a fine-grained one.',
     ),
   );
 

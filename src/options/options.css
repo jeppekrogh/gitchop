@@ -31,9 +31,9 @@ body {
 }
 
 /*
- * One card at a time: the rail on the left names every card under two headings, and the chosen one
+ * One page at a time: the rail on the left names every page under two headings, and the chosen one
  * stands alone on the right, at about the width the cards have always had. The rail stays put while
- * a tall card scrolls. A narrow window puts the rail above the card instead, the same buttons in a
+ * a tall page scrolls. A narrow window puts the rail above the page instead, the same buttons in a
  * row, underlined rather than barred.
  */
 .pages {
@@ -96,6 +96,40 @@ body {
   display: grid;
   gap: 28px;
   min-width: 0;
+}
+
+/*
+ * A page is three parts: what the feature is, above the box; the settings themselves, in it; and
+ * what is worth knowing about them as they stand, below it. Only the box has a border, so the eye
+ * lands on the controls and the prose stays prose.
+ */
+.pane {
+  display: grid;
+  gap: 14px;
+}
+
+.intro,
+.notes .note {
+  color: var(--dim);
+  max-width: 64ch;
+  padding: 0 2px;
+}
+
+.notes {
+  display: grid;
+  gap: 10px;
+}
+
+.notes:empty {
+  display: none;
+}
+
+.notes .recipe {
+  gap: 10px;
+}
+
+.notes .steps {
+  padding: 0 2px 0 22px;
 }
 
 @media (max-width: 760px) {

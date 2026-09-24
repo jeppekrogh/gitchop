@@ -1,8 +1,8 @@
 /**
- * One card at a time. The rail names every card under two headings, the card chosen is the only
+ * One page at a time. The rail names every page under two headings, the page chosen is the only
  * one in the layout, and the choice is kept — in the hash, so a reload lands where it left off,
- * and in localStorage, so the next visit does too. Every card stays in the page, hidden, because
- * each card's module finds its elements when it loads. The rail is buttons rather than anchors:
+ * and in localStorage, so the next visit does too. Every page stays in the document, hidden,
+ * because each card's module finds its elements when it loads. The rail is buttons rather than anchors:
  * the harness loads this page into a frame under a <base>, where a #hash link would navigate the
  * frame away; here the hash is only ever written, and only where writing it is allowed.
  */
@@ -10,7 +10,7 @@ const KEY = 'gitchop:settings:page';
 
 const rail = document.querySelector('.rail');
 const items = [...rail.querySelectorAll('.rail-item')];
-const cards = [...document.querySelectorAll('.card[data-page]')];
+const panes = [...document.querySelectorAll('.pane[data-page]')];
 
 function known(id) {
   return items.some((item) => item.dataset.page === id) ? id : null;
@@ -40,7 +40,7 @@ function remember(id) {
 /** The page named, or the one remembered, or the first; says which it settled on. */
 export function show(id) {
   const page = known(id) ?? remembered() ?? items[0].dataset.page;
-  for (const card of cards) card.hidden = card.dataset.page !== page;
+  for (const pane of panes) pane.hidden = pane.dataset.page !== page;
   for (const item of items) {
     if (item.dataset.page === page) item.setAttribute('aria-current', 'page');
     else item.removeAttribute('aria-current');

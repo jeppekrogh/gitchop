@@ -2,9 +2,12 @@ import { api } from '../lib/links.js';
 
 const TOKEN_CLASSIC = 'https://github.com/settings/tokens/new?scopes=repo,gist&description=gitchop';
 const TOKEN_FINE = 'https://github.com/settings/personal-access-tokens/new';
+const PRIVACY = 'https://github.com/jeppekroghitk/gitchop/blob/main/PRIVACY.md';
 
 const host = document.getElementById('sync');
 const statusEl = document.getElementById('sync-status');
+/** Under the card: how to make a token, and what is worth knowing about the ones saved. */
+const notes = document.getElementById('token-notes');
 
 let statusTimer = null;
 let busy = false;
@@ -105,12 +108,12 @@ async function guard(node, work) {
 
 function recipe() {
   const wrap = element('div', 'recipe');
-  wrap.append(element('p', 'note', 'One classic token covers everything, including every organisation you belong to:'));
+  wrap.append(element('p', 'note', 'One classic token covers everything, every organisation included:'));
 
   const steps = element('ol', 'steps');
   const items = [
-    ['Scopes', 'repo and gist. repo is what lists private repositories, reads the pull requests beside the menu and the news from private repositories you subscribe to; gist is only for the backup, so leave it off if you do not want that.'],
-    ['Expiration', 'set one. When it lapses, search stops and this page reports the rejection — nothing is lost, and it beats a credential with no end date.'],
+    ['Scopes', 'repo and gist. repo reads private repositories, pull requests, news and contributions; gist is only for the backup.'],
+    ['Expiration', 'set one. When it lapses this page says so, and nothing is lost.'],
     ['Nothing else', 'no other scope is needed or used.'],
   ];
   for (const [term, detail] of items) {
@@ -123,11 +126,8 @@ function recipe() {
     element(
       'p',
       'note',
-      'Worth knowing what you are handing over: classic tokens have no read-only scope for private ' +
-        'repositories, so repo also grants write to every repository the account can reach. gitchop only ' +
-        'ever lists them. If you would rather grant less, a fine-grained token with Metadata read-only ' +
-        'lists them without the write — but it covers one owner each, so two organisations means two ' +
-        'tokens, and an organisation may require an owner to approve them. Add as many as you like below.',
+      'repo also grants write, which gitchop never uses. A fine-grained token with Metadata: read-only ' +
+        'grants less but covers one owner each, so add one per organisation.',
     ),
   );
   return wrap;
@@ -135,16 +135,7 @@ function recipe() {
 
 function noToken(error) {
   const wrap = element('div', 'card-body');
-  wrap.append(
-    element(
-      'p',
-      'note',
-      'One token unlocks four things: finding private repositories, which GitHub’s search will not ' +
-        'return; the pull requests waiting on you, beside the menu; news from private repositories ' +
-        'you subscribe to — public ones need no token; and backing your links up to a secret gist.',
-    ),
-  );
-  wrap.append(recipe());
+  notes.append(recipe());
 
   const token = textInput({ password: true, placeholder: 'github_pat_… or ghp_…', label: 'GitHub token' });
   const fields = element('div', 'form');
@@ -179,19 +170,9 @@ function noToken(error) {
 
   wrap.append(fields, actions, scopes);
   if (error) wrap.append(element('p', 'error', error));
-  wrap.append(
-    element(
-      'p',
-      'note',
-      'Tokens are stored outside synced storage, obfuscated rather than left as readable text, only ' +
-        'ever sent to api.github.com, and never handed to a web page. Each is used for five calls and ' +
-        'no others: who the account is, which repositories it can see, which open pull requests are ' +
-        'yours or want your review, what happened lately in the repositories you subscribe to, and ' +
-        'reading and writing the one gist. Obfuscation is not ' +
-        'encryption — anyone with access to this profile can still recover ' +
-        'them — but a token no longer sits in the profile as searchable text.',
-    ),
-  );
+  const kept = element('p', 'note', 'Tokens stay on this machine, obfuscated rather than encrypted, and go only to api.github.com. ');
+  kept.append(link('What is sent →', PRIVACY));
+  notes.append(kept);
   return wrap;
 }
 
@@ -233,9 +214,8 @@ function broadWarning(sync) {
   return element(
     'p',
     'note',
-    `Marked "writes": ${scopes}. That is expected of a classic token — repo is the only scope that ` +
-      'lists private repositories and it carries write with it, which gitchop never uses. Keep an ' +
-      'expiry on it, and revoke it rather than leaving it idle if you stop using gitchop.',
+    `Marked "writes": ${scopes}. Expected of a classic token — repo carries write, which gitchop never uses. ` +
+      'Keep an expiry on it.',
   );
 }
 
@@ -280,16 +260,8 @@ function tokenOnly(sync, error) {
   const wrap = element('div', 'card-body');
   wrap.append(tokenList(sync));
   const warn = broadWarning(sync);
-  if (warn) wrap.append(warn);
-  wrap.append(
-    element(
-      'p',
-      'note',
-      'The token is in place, so private repository search works as soon as its index is built, under Private repository search. ' +
-        'Backup is separate and off: switch it on and your links are written to a secret gist on every ' +
-        'change, with the gist’s revision history as the safety net.',
-    ),
-  );
+  if (warn) notes.append(warn);
+  notes.append(element('p', 'note', 'Backup is off. Switch it on and your links are written to a secret gist on every change.'));
 
   const gist = textInput({ placeholder: 'existing gist id (leave empty to create one)', label: 'Gist id' });
   const fields = element('div', 'form');
@@ -323,7 +295,7 @@ function connected(sync, error) {
 
   wrap.append(tokenList(sync));
   const warn = broadWarning(sync);
-  if (warn) wrap.append(warn);
+  if (warn) notes.append(warn);
   wrap.append(
     facts([
       ['Gist', link(sync.gistId, sync.gistUrl)],
@@ -377,6 +349,7 @@ function connected(sync, error) {
 
 function render(sync, error) {
   host.textContent = '';
+  notes.textContent = '';
   if (sync?.connected) host.append(connected(sync, error));
   else if (sync?.hasToken) host.append(tokenOnly(sync, error));
   else host.append(noToken(error));

@@ -3,6 +3,8 @@ import { SWITCHES } from '../lib/contributions.js';
 
 const host = document.getElementById('contributions');
 const statusEl = document.getElementById('contributions-status');
+/** Under the card: what is worth knowing about the settings as they stand. */
+const notes = document.getElementById('contributions-notes');
 
 let statusTimer = null;
 let busy = false;
@@ -89,29 +91,17 @@ function switchRow(spec, state) {
 
 function render(state, error) {
   host.textContent = '';
+  notes.textContent = '';
   const wrap = element('div', 'card-body');
 
-  wrap.append(
-    element(
-      'p',
-      'note',
-      'The number your profile prints for the year — every commit, pull request, review and issue ' +
-        'GitHub counts — in the head of the menu beside the title, spun in like a slot machine\'s as ' +
-        'the panel rises, the reels stopping one at a time, left to right. It paints from ' +
-        'its last snapshot and asks GitHub again when the menu ' +
-        'opens on one older than five minutes; a count that has grown since rolls its last digits ' +
-        'on. Hovering the number shows the totals for the three years before it.',
-    ),
-  );
-
   if (!state?.hasToken) {
-    wrap.append(
+    wrap.append(element('p', 'empty', 'No token saved.'));
+    notes.append(
       element(
         'p',
         'note',
-        'It needs a token: a classic token with repo, added under Token, counts private contributions too, and a ' +
-          'fine-grained one counts what it is allowed to see. Without one there is no number — the ' +
-          'head of the menu is the title alone.',
+        'Needs a token under Token. A classic one with repo counts private contributions too; a ' +
+          'fine-grained one counts what it can see.',
       ),
     );
     host.append(wrap);
@@ -136,13 +126,12 @@ function render(state, error) {
   else if (state.partial) wrap.append(element('p', 'error', `One token did not answer: ${state.partial}`));
 
   if (state.settings.enabled === 1) {
-    wrap.append(
+    notes.append(
       element(
         'p',
         'note',
-        'Every saved token is asked for this year and the three before it in one request, and the ' +
-          'highest count for this year is kept, its past years with it: a token that sees fewer ' +
-          'repositories counts fewer, never more, so the largest answer is the most complete one.',
+        'Every saved token is asked and the highest count kept: a token that sees fewer repositories ' +
+          'counts fewer, never more.',
       ),
     );
 

@@ -3,6 +3,8 @@ import { SWITCHES } from '../lib/pulls.js';
 
 const host = document.getElementById('pulls');
 const statusEl = document.getElementById('pulls-status');
+/** Under the card: what is worth knowing about the settings as they stand. */
+const notes = document.getElementById('pulls-notes');
 
 let statusTimer = null;
 let busy = false;
@@ -89,27 +91,17 @@ function switchRow(spec, state) {
 
 function render(state, error) {
   host.textContent = '';
+  notes.textContent = '';
   const wrap = element('div', 'card-body');
 
-  wrap.append(
-    element(
-      'p',
-      'note',
-      'A second column beside the menu: feedback on your pull requests — approved, or changes ' +
-        'requested — then the pull requests waiting on you for a review, then yours still waiting on ' +
-        'others. It paints the instant the menu opens and refreshes behind it; → or Tab crosses into ' +
-        'it, ← comes back, and typing anything comes straight back to the search.',
-    ),
-  );
-
   if (!state?.hasToken) {
-    wrap.append(
+    wrap.append(element('p', 'empty', 'No token saved.'));
+    notes.append(
       element(
         'p',
         'note',
-        'It needs a token that can read pull requests: a classic token with repo, added under Token, does, and so ' +
-          'does a fine-grained one with Pull requests: read-only for each owner. Without one there is ' +
-          'no column — the menu is exactly what it was.',
+        'Needs a token under Token: a classic one with repo, or a fine-grained one with Pull requests: ' +
+          'read-only per owner. Without one there is no column.',
       ),
     );
     host.append(wrap);
@@ -132,13 +124,11 @@ function render(state, error) {
   else if (state.partial) wrap.append(element('p', 'error', `One token did not answer: ${state.partial}`));
 
   if (state.settings.enabled === 1) {
-    wrap.append(
+    notes.append(
       element(
         'p',
         'note',
-        'A fine-grained token that was never granted Pull requests shows empty lanes rather than an ' +
-          'error — GitHub returns less, not a refusal. If the lanes stay empty while github.com/pulls ' +
-          'does not, that is why.',
+        'A fine-grained token without Pull requests: read-only shows empty lanes rather than an error.',
       ),
     );
 
