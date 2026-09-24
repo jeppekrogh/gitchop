@@ -869,11 +869,6 @@ window.__gitchop = window.__gitchop || {};
       refreshNews();
     }
 
-    /** Thousands spaced as the reels space them, for the years listed under the number. */
-    function spaced(total) {
-      return String(total).replace(/\B(?=(\d{3})+$)/g, '\u2009');
-    }
-
     function hideYears() {
       if (!count) return;
       count.pop.dataset.shown = 'false';
@@ -920,8 +915,9 @@ window.__gitchop = window.__gitchop || {};
       count.past = known ? (data.past ?? []).filter((entry) => Number.isFinite(entry?.total)) : [];
       count.years.textContent = '';
       // The same line as a pull request or a commit in the news: the year where the title goes,
-      // its total where the detail goes, and no URL, so it is a line and not a link.
-      for (const entry of count.past) count.years.append(popLine(String(entry.year), spaced(entry.total), ''));
+      // its total where the detail goes — plain digits, as the reels are — and no URL, so it is a
+      // line and not a link.
+      for (const entry of count.past) count.years.append(popLine(String(entry.year), String(entry.total), ''));
       if (count.past.length === 0) hideYears();
 
       if (!known) {

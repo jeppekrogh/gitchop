@@ -282,11 +282,6 @@ window.__gitchop.CSS = `
   line-height: 11px;
 }
 
-.gc-odo-sep {
-  display: block;
-  width: 0.3em;
-}
-
 .gc-odo-bar {
   width: 2.8em;
   height: 7px;

@@ -33,9 +33,9 @@ window.__gitchop = window.__gitchop || {};
 
   /**
    * A number as a row of reels, one per digit: a strip of glyphs sliding behind a window one digit
-   * tall, so a change rolls rather than blinks. Groups of three are spaced, never joined with a
-   * comma — the reels are for looking at, and the exact figure goes on the label around them for
-   * anything that reads. Until the panel is on screen the reels stand blank, whatever has been
+   * tall, so a change rolls rather than blinks. Nothing between the digits, no comma and no gap —
+   * the reels are for looking at, and the exact figure goes on the label around them for anything
+   * that reads. Until the panel is on screen the reels stand blank, whatever has been
    * set; `reveal` lets them go, and every set after that rolls from wherever they are.
    *
    * A number's first appearance is a slot machine's: every reel starts spinning the moment the
@@ -100,7 +100,6 @@ window.__gitchop = window.__gitchop || {};
       cells = BLANK + DIGITS.length * runs;
       const start = from.slice(-count).padStart(count, ' ');
       for (let i = 0; i < count; i += 1) {
-        if (i > 0 && (count - i) % 3 === 0) element.append(node('span', 'gc-odo-sep'));
         const digit = node('span', 'gc-odo-digit');
         const reel = node('span', 'gc-odo-reel');
         reel.append(node('span', null, ''));

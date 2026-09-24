@@ -70,7 +70,7 @@ const BLANK = 1;
 const reels = (odo) => odo.element.children.filter((child) => child.className === 'gc-odo-digit').map((digit) => digit.children[0]);
 const at = (odo) => reels(odo).map((reel) => Number(reel.dataset.at));
 const showing = (odo) => at(odo).map((index) => (index < BLANK ? ' ' : String((index - BLANK) % 10))).join('');
-const shape = (odo) => odo.element.children.map((child) => (child.className === 'gc-odo-sep' ? '|' : 'd')).join('');
+const shape = (odo) => odo.element.children.map((child) => (child.className === 'gc-odo-digit' ? 'd' : '?')).join('');
 const percent = (reel) => reel.style.transform;
 const ms = (reel, name) => Number.parseInt(reel.style.vars[name] ?? '0', 10);
 const durations = (odo) => reels(odo).map((reel) => ms(reel, '--gc-odo-roll'));
@@ -84,7 +84,7 @@ const settleAll = (odo) => reels(odo).forEach((reel) => reel.fire('transitionend
 // Before the panel is on screen the reels stand blank, whatever has been set.
 let odo = load();
 odo.set(1234);
-assert.equal(shape(odo), 'd|ddd', 'a thousands gap, no comma');
+assert.equal(shape(odo), 'dddd', 'four reels and nothing between them: no comma, no gap');
 assert.deepEqual(at(odo), [0, 0, 0, 0], 'blank until revealed');
 assert.equal(showing(odo), '    ');
 assert.equal(reels(odo)[0].children.length, 21, 'a blank and two runs: the last reel spins 1.95 s, about sixteen digits, one turn at most, and a run to tick into');
@@ -158,7 +158,7 @@ assert.equal(showing(odo), '1252');
 // More digits: new reels are built around the old number, right-aligned, the new one blank — and it
 // rolls straight onto its digit while the rest roll on from theirs. The strip grows a run with them.
 odo.set(10000);
-assert.equal(shape(odo), 'dd|ddd');
+assert.equal(shape(odo), 'ddddd');
 assert.equal(reels(odo)[0].children.length, 31, 'three runs for five reels: the fifth spins 2.55 s, about twenty digits, two turns at most');
 assert.deepEqual(at(odo), [2, 11, 11, 11, 11], 'blank straight to one; one, two, five and two each up to the nought that begins the second run');
 assert.equal(showing(odo), '10000');
@@ -200,7 +200,7 @@ assert.equal(showing(odo), '12');
 odo.set(12.9);
 assert.equal(showing(odo), '12');
 odo.set(1000000);
-assert.equal(shape(odo), 'd|ddd|ddd', 'a gap every three digits');
+assert.equal(shape(odo), 'ddddddd', 'seven reels, nothing between them');
 assert.equal(showing(odo), '1000000');
 assert.equal(reels(odo)[0].children.length, 41, 'four runs for seven reels: the seventh spins 3.75 s, about thirty digits, three turns at most');
 

@@ -6,8 +6,8 @@ it from.
 ## Unreleased
 
 - **Your contributions this year, in the head of the menu.** With a token saved, the number your
-  profile prints for the year — *1 234 contributions in 2026* — sits beside the title, spun in like
-  a slot machine's: every reel sets off the moment the panel is up and they stop one at a time, left
+  profile prints for the year — *1234 contributions in 2026* — sits beside the title, spun in like a
+  slot machine's: every reel sets off the moment the panel is up and they stop one at a time, left
   to right — the first as good as at once, each to its right 600 ms after the one before, each
   turning as many times on the way as keeps the whole row at one slow, readable pace. A count that
   arrives while they are still turning keeps every stop where it was and only changes the digit each
