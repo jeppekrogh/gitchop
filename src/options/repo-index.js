@@ -83,8 +83,9 @@ function render(index, error) {
       element(
         'p',
         'note',
-        'An organisation missing from the list is one the token was never granted, or whose owner has ' +
-          'not approved it yet; GitHub returns less rather than an error.',
+        'Check the private count as much as the list: any token lists an organisation’s public ' +
+          'repositories, so one that never granted the token, or has not approved it yet, still shows ' +
+          'up here with only its private ones missing. GitHub returns less rather than an error.',
       ),
     );
 
@@ -93,8 +94,9 @@ function render(index, error) {
         element(
           'p',
           'error',
-          'No private repositories came back. A fine-grained token needs Metadata: read-only, with the ' +
-            'organisation as its resource owner.',
+          'No private repositories came back. A fine-grained token needs Metadata: read-only with the ' +
+            'organisation as its resource owner, and an owner’s approval where the organisation requires ' +
+            'one; until then it lists public repositories only.',
         ),
       );
     }

@@ -39,6 +39,7 @@
           <span class="rail-group">GitHub</span>
           <button type="button" class="rail-item" data-page="token">Token</button>
           <button type="button" class="rail-item" data-page="index">Private repository search</button>
+          <button type="button" class="rail-item" data-page="backup">Backup</button>
         </nav>
 
         <div class="page">
@@ -124,6 +125,21 @@
               <div id="index"></div>
             </section>
             <div class="notes" id="index-notes"></div>
+          </div>
+
+          <div class="pane" data-page="backup" hidden>
+            <p class="intro">
+              Your links live in this browser’s profile and go with the extension if it is removed.
+              Backup writes them to a secret gist on every change.
+            </p>
+            <section class="card">
+              <div class="card-head">
+                <h2>Backup</h2>
+                <span class="status" id="backup-status" role="status" aria-live="polite"></span>
+              </div>
+              <div id="backup"></div>
+            </section>
+            <div class="notes" id="backup-notes"></div>
           </div>
 
           <div class="pane" data-page="pulls" hidden>
