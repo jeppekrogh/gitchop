@@ -285,7 +285,7 @@ function tokenOnly(sync, error) {
     element(
       'p',
       'note',
-      'The token is in place, so private repository search works as soon as the index below is built. ' +
+      'The token is in place, so private repository search works as soon as its index is built, under Private repository search. ' +
         'Backup is separate and off: switch it on and your links are written to a secret gist on every ' +
         'change, with the gist’s revision history as the safety net.',
     ),

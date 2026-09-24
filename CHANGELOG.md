@@ -23,6 +23,13 @@ it from.
   existed are left out rather than shown as nought. A **Contributions** card in Settings has the
   switch, the numbers, when they were refreshed, and a **Refresh now**. Removing the last token
   deletes the snapshot with the rest. (#7)
+- **The settings page is paged.** Eight cards in one column had become a long scroll, so a rail on
+  the left now names every card under two headings — Menu: Links, Placeholders, Chop effect; GitHub:
+  Token, Private repository search, Pull requests, News, Contributions — and one card stands on the
+  right at a time. The page remembers the card it was left on, in the address and for the next
+  visit; up and down walk the rail. A narrow window puts the rail above the card as a row instead.
+  Every card stays in the page, only hidden, so nothing about how they load or save has changed; the
+  notes that pointed at a card "above" or "below" now name it. (#3)
 
 ## 2.5.0
 

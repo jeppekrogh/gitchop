@@ -9,6 +9,7 @@ import {
   saveLinks,
   withIds,
 } from '../lib/links.js';
+import { mount as mountPages } from './pages.js';
 import { load as loadSync, watch as watchSync } from './sync.js';
 import { load as loadIndex } from './repo-index.js';
 import { load as loadPulls } from './pulls-card.js';
@@ -188,6 +189,9 @@ window.addEventListener('beforeunload', () => {
 // Straight from the manifest, so there is only ever one place the version is written down.
 const { name, version } = api.runtime.getManifest();
 document.getElementById('version').textContent = `${name} ${version}`;
+
+// The page to show is decided before anything is fetched, so the first paint is the right card.
+mountPages();
 
 links = await loadLinks();
 lastWritten = JSON.stringify(links);

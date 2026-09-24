@@ -109,7 +109,7 @@ function render(state, error) {
       element(
         'p',
         'note',
-        'It needs a token: the classic token above with repo counts private contributions too, and a ' +
+        'It needs a token: a classic token with repo, added under Token, counts private contributions too, and a ' +
           'fine-grained one counts what it is allowed to see. Without one there is no number — the ' +
           'head of the menu is the title alone.',
       ),

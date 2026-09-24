@@ -22,78 +22,101 @@
         <div id="access"></div>
       </section>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>Your links</h2>
-          <span class="status" id="status" role="status" aria-live="polite"></span>
-        </div>
+      <!--
+        One card at a time, chosen from the rail; the rest stay in the page, hidden, since every
+        card's module finds its elements when it loads. The rail is buttons rather than anchors: the
+        harness loads this page into a frame under a <base>, where a #hash link would navigate the
+        frame away.
+      -->
+      <div class="pages">
+        <nav class="rail" aria-label="Settings pages">
+          <span class="rail-group">Menu</span>
+          <button type="button" class="rail-item" data-page="links">Links</button>
+          <button type="button" class="rail-item" data-page="placeholders">Placeholders</button>
+          <button type="button" class="rail-item" data-page="effects">Chop effect</button>
+          <span class="rail-group">GitHub</span>
+          <button type="button" class="rail-item" data-page="token">Token</button>
+          <button type="button" class="rail-item" data-page="index">Private repository search</button>
+          <button type="button" class="rail-item" data-page="pulls">Pull requests</button>
+          <button type="button" class="rail-item" data-page="news">News</button>
+          <button type="button" class="rail-item" data-page="contributions">Contributions</button>
+        </nav>
 
-        <div class="rows" id="rows"></div>
+        <div class="page">
+          <section class="card" data-page="links" hidden>
+            <div class="card-head">
+              <h2>Your links</h2>
+              <span class="status" id="status" role="status" aria-live="polite"></span>
+            </div>
 
-        <div class="card-foot">
-          <button type="button" class="btn btn-primary" id="add">+ Add link</button>
-          <button type="button" class="btn" id="reset">Restore defaults</button>
-        </div>
-      </section>
+            <div class="rows" id="rows"></div>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>Chop effect</h2>
-          <span class="status" id="effects-status" role="status" aria-live="polite"></span>
-        </div>
-        <div id="effects"></div>
-      </section>
+            <div class="card-foot">
+              <button type="button" class="btn btn-primary" id="add">+ Add link</button>
+              <button type="button" class="btn" id="reset">Restore defaults</button>
+            </div>
+          </section>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>GitHub token</h2>
-          <span class="status" id="sync-status" role="status" aria-live="polite"></span>
-        </div>
-        <div id="sync"></div>
-      </section>
+          <section class="card" data-page="effects" hidden>
+            <div class="card-head">
+              <h2>Chop effect</h2>
+              <span class="status" id="effects-status" role="status" aria-live="polite"></span>
+            </div>
+            <div id="effects"></div>
+          </section>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>Private repository search</h2>
-          <span class="status" id="index-status" role="status" aria-live="polite"></span>
-        </div>
-        <div id="index"></div>
-      </section>
+          <section class="card" data-page="token" hidden>
+            <div class="card-head">
+              <h2>GitHub token</h2>
+              <span class="status" id="sync-status" role="status" aria-live="polite"></span>
+            </div>
+            <div id="sync"></div>
+          </section>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>Pull requests</h2>
-          <span class="status" id="pulls-status" role="status" aria-live="polite"></span>
-        </div>
-        <div id="pulls"></div>
-      </section>
+          <section class="card" data-page="index" hidden>
+            <div class="card-head">
+              <h2>Private repository search</h2>
+              <span class="status" id="index-status" role="status" aria-live="polite"></span>
+            </div>
+            <div id="index"></div>
+          </section>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>News</h2>
-          <span class="status" id="news-status" role="status" aria-live="polite"></span>
-        </div>
-        <div id="news"></div>
-      </section>
+          <section class="card" data-page="pulls" hidden>
+            <div class="card-head">
+              <h2>Pull requests</h2>
+              <span class="status" id="pulls-status" role="status" aria-live="polite"></span>
+            </div>
+            <div id="pulls"></div>
+          </section>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>Contributions</h2>
-          <span class="status" id="contributions-status" role="status" aria-live="polite"></span>
-        </div>
-        <div id="contributions"></div>
-      </section>
+          <section class="card" data-page="news" hidden>
+            <div class="card-head">
+              <h2>News</h2>
+              <span class="status" id="news-status" role="status" aria-live="polite"></span>
+            </div>
+            <div id="news"></div>
+          </section>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>Placeholders</h2>
+          <section class="card" data-page="contributions" hidden>
+            <div class="card-head">
+              <h2>Contributions</h2>
+              <span class="status" id="contributions-status" role="status" aria-live="polite"></span>
+            </div>
+            <div id="contributions"></div>
+          </section>
+
+          <section class="card" data-page="placeholders" hidden>
+            <div class="card-head">
+              <h2>Placeholders</h2>
+            </div>
+            <p class="note">
+              Any of these in a URL is replaced with something from the page you are on. A link whose
+              placeholders cannot be filled is shown greyed out in the menu.
+            </p>
+            <dl class="tokens" id="tokens"></dl>
+          </section>
         </div>
-        <p class="note">
-          Any of these in a URL is replaced with something from the page you are on. A link whose
-          placeholders cannot be filled is shown greyed out in the menu.
-        </p>
-        <dl class="tokens" id="tokens"></dl>
-      </section>
+      </div>
 
       <footer class="footer">
         <span id="version" class="mono"></span>

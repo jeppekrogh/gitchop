@@ -107,7 +107,7 @@ function render(state, error) {
       element(
         'p',
         'note',
-        'It needs a token that can read pull requests: the classic token above with repo does, and so ' +
+        'It needs a token that can read pull requests: a classic token with repo, added under Token, does, and so ' +
           'does a fine-grained one with Pull requests: read-only for each owner. Without one there is ' +
           'no column — the menu is exactly what it was.',
       ),
