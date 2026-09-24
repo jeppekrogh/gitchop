@@ -104,7 +104,7 @@ function hourRow(state) {
     output.textContent = clock(Number(input.value));
   });
   input.addEventListener('change', () =>
-    guard(input, () => apply({ type: 'gitchop:news:settings', patch: { hour: Number(input.value) } }, `at ${clock(Number(input.value))}`)),
+    guard(input, () => apply({ type: 'gitchop:news:settings', patch: { hour: Number(input.value) } }, 'saved')),
   );
 
   row.append(label, input, output);

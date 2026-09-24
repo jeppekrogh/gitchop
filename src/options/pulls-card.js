@@ -80,7 +80,7 @@ function switchRow(spec, state) {
   toggle.addEventListener('click', () =>
     guard(toggle, async () => {
       const result = await ask({ type: 'gitchop:pulls:settings', patch: { [spec.id]: on ? 0 : 1 } });
-      flash(on ? 'off' : 'on');
+      flash('saved');
       current = result;
       render(result);
     }),

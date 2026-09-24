@@ -83,7 +83,7 @@ function switchRow(feature) {
   toggle.addEventListener('click', () =>
     guard(toggle, async () => {
       current[feature.id] = await ask({ type: feature.set, patch: { enabled: on ? 0 : 1 } });
-      flash(on ? 'off' : 'on');
+      flash('saved');
       render();
       feature.after?.();
     }),
