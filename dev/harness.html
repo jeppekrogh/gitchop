@@ -114,7 +114,10 @@
       const wait = (ms) => new Promise((done) => setTimeout(done, ms));
       const backup = params.get('backup') === 'on';
       const sync = {
-        tokens: params.get('token') === 'none' ? [] : [{ id: 't1', secret: 'ghp_harness', login: 'jeppekrogh', kind: 'classic', scopes: ['repo', 'gist'] }],
+        tokens:
+          params.get('token') === 'none'
+            ? []
+            : [{ id: 't1', secret: 'ghp_harness', login: 'jeppekrogh', kind: 'classic', scopes: ['repo', 'gist'], owners: ['jeppekrogh', 'itk-dev', 'os2display'] }],
         gistId: backup ? 'c0ffee5eed1234567890abcdef' : null,
         lastPulledAt: backup ? '2026-09-17T06:00:00.000Z' : null,
         lastPushedAt: backup ? '2026-09-17T07:12:00.000Z' : null,
@@ -125,7 +128,7 @@
         const hasToken = sync.tokens.length > 0;
         return {
           ok: true,
-          tokens: sync.tokens.map(({ id, login, kind, scopes }) => ({ id, login, kind, scopes, broad: scopes.includes('repo') })),
+          tokens: sync.tokens.map(({ id, login, kind, scopes, owners }) => ({ id, login, kind, scopes, owners, broad: scopes.includes('repo') })),
           hasToken,
           connected: hasToken && Boolean(sync.gistId),
           gistId: sync.gistId,
@@ -155,14 +158,18 @@
             if (!secret) return { ok: false, error: 'A token is required.' };
             if (sync.tokens.some((entry) => entry.secret === secret)) return { ok: false, error: 'That token is already saved.' };
             // Labelled the way GitHub would label it; anything else is saved unlabelled, as the background does.
+            // A fine-grained token reaches one owner; the first one added is an organisation's, the next a
+            // pending one that lists nothing yet.
             const fine = secret.startsWith('github_pat_');
             const classic = secret.startsWith('ghp_');
+            const fineBefore = sync.tokens.filter((entry) => entry.kind === 'fine-grained').length;
             sync.tokens.push({
               id: crypto.randomUUID(),
               secret,
               login: fine || classic ? 'someone' : null,
               kind: fine ? 'fine-grained' : classic ? 'classic' : null,
               scopes: classic ? ['repo'] : [],
+              owners: fine ? (fineBefore === 0 ? ['itk-dev'] : []) : classic ? ['someone', 'itk-dev'] : null,
             });
             return syncState();
           }

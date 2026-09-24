@@ -68,10 +68,11 @@ export function ownersFromLinks(links) {
  * surface private repositories, and asking it on every keystroke is a poor trade when the list of
  * repositories you care about changes a few times a month.
  */
-export async function listAccessibleRepos(token, pages = 6, perPage = 100) {
+export async function listAccessibleRepos(token, pages = 6, perPage = 100, visibility = null) {
   const all = [];
   for (let page = 1; page <= pages; page += 1) {
-    const query = `per_page=${perPage}&page=${page}&affiliation=owner,collaborator,organization_member&sort=updated`;
+    const only = visibility ? `&visibility=${visibility}` : '';
+    const query = `per_page=${perPage}&page=${page}&affiliation=owner,collaborator,organization_member&sort=updated${only}`;
     const result = await get(`/user/repos?${query}`, token);
     if (!result.ok) {
       if (page === 1) {
@@ -86,6 +87,34 @@ export async function listAccessibleRepos(token, pages = 6, perPage = 100) {
     if (batch.length < perPage) break;
   }
   return all;
+}
+
+/**
+ * Whose private repositories these are, first seen first, in GitHub's own casing. Public ones say
+ * nothing about a token: every token on GitHub can list those, whoever it was made for, so a token
+ * an organisation has yet to approve lists the public half of every organisation the account belongs
+ * to. The private repositories are the grant itself.
+ */
+export function privateOwnersOf(repos) {
+  const owners = [];
+  for (const repo of repos ?? []) {
+    if (!repo?.private) continue;
+    const full = String(repo.fullName ?? '');
+    const slash = full.indexOf('/');
+    if (slash < 1) continue;
+    const owner = full.slice(0, slash);
+    if (!owners.some((seen) => seen.toLowerCase() === owner.toLowerCase())) owners.push(owner);
+  }
+  return owners;
+}
+
+/**
+ * Who a token speaks for. A fine-grained token has exactly one resource owner and GitHub never says
+ * which, so it is read off the private repositories the token lists; one page names it. An empty
+ * answer is itself news: nothing selected, or an organisation that has yet to approve the token.
+ */
+export async function ownersReachable(token) {
+  return privateOwnersOf(await listAccessibleRepos(token, 1, 100, 'private'));
 }
 
 /** Exact name, then prefix, then substring; shorter names win ties. */

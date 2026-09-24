@@ -44,6 +44,17 @@ export function scopesGrantWrite(scopes) {
 }
 
 /**
+ * What a saved token is called. A classic token is the account's and covers everything it can reach,
+ * so the account names it. A fine-grained token speaks for one owner, and every one the same person
+ * makes reports the same login, so the owner it reaches is what tells two of them apart.
+ */
+export function tokenLabel(entry) {
+  const owners = entry?.kind === 'classic' ? [] : entry?.owners ?? [];
+  if (owners.length > 0) return owners.map((owner) => `@${owner}`).join(', ');
+  return entry?.login ? `@${entry.login}` : entry?.kind ?? 'token';
+}
+
+/**
  * Confirms the token works and says who it belongs to. Classic tokens also report their scopes in
  * a response header, which is the only way to tell the holder what they actually handed over —
  * fine-grained tokens send no such header, and their absence is itself the signal.

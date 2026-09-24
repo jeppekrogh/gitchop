@@ -1,6 +1,6 @@
 import { DEFAULT_LINKS, api, isSafeUrl, loadLinks, sanitize, saveLinks, withIds } from './lib/links.js';
-import { createStore, identify, readStore, scopesGrantWrite, tokenKind, writeStore } from './lib/gist.js';
-import { findRepos, listAccessibleRepos, matchIndex, ownersFromLinks } from './lib/repos.js';
+import { createStore, identify, readStore, scopesGrantWrite, tokenKind, tokenLabel, writeStore } from './lib/gist.js';
+import { findRepos, listAccessibleRepos, matchIndex, ownersFromLinks, ownersReachable, privateOwnersOf } from './lib/repos.js';
 import { newVaultKey, seal, unseal } from './lib/vault.js';
 import {
   LANES,
@@ -117,6 +117,7 @@ async function storeTokens(entries) {
       login: entry.login ?? null,
       kind: entry.kind ?? null,
       scopes: entry.scopes ?? [],
+      owners: Array.isArray(entry.owners) ? entry.owners : null,
       sealed: await seal(entry.secret, vaultKey),
     });
   }
@@ -127,11 +128,12 @@ async function storeTokens(entries) {
 async function state() {
   const config = await readConfig();
   return {
-    tokens: config.tokens.map(({ id, login, kind, scopes }) => ({
+    tokens: config.tokens.map(({ id, login, kind, scopes, owners }) => ({
       id,
       login: login ?? null,
       kind: kind ?? null,
       scopes: scopes ?? [],
+      owners: Array.isArray(owners) ? owners : null,
       broad: scopesGrantWrite(scopes),
     })),
     hasToken: config.tokens.length > 0,
@@ -244,12 +246,16 @@ async function addToken({ token }) {
   // Only for labelling, so never let it block saving — a fine-grained token may decline /user while
   // working perfectly for repositories.
   const who = await identify(trimmed).catch(() => ({ login: null, scopes: [], kind: tokenKind(trimmed) }));
+  // The owner a fine-grained token speaks for shows only in the private repositories it lists. Not
+  // knowing is no reason to refuse the token either; building the index asks again and fills it in.
+  const owners = await ownersReachable(trimmed).catch(() => null);
   const entry = {
     id: newId(),
     secret: trimmed,
     login: who.login ?? null,
     kind: who.kind ?? tokenKind(trimmed),
     scopes: who.scopes ?? [],
+    owners,
   };
   await storeTokens([...saved, entry]);
   await writeConfig({ lastError: null });
@@ -308,7 +314,10 @@ async function readIndex() {
   return stored[INDEX_KEY] ?? { repos: [], builtAt: null, failures: [] };
 }
 
-/** Every token contributes, because each one can only speak for its own resource owner. */
+/**
+ * Every token contributes, because each one can only speak for its own resource owner. The full
+ * listing also settles which owners each token reaches, so the token rows in Settings stay true.
+ */
 async function buildIndex() {
   const tokens = await loadTokens();
   if (tokens.length === 0) throw new Error('Add a token first.');
@@ -317,7 +326,9 @@ async function buildIndex() {
   const failures = [];
   for (const entry of tokens) {
     try {
-      for (const repo of await listAccessibleRepos(entry.secret)) {
+      const repos = await listAccessibleRepos(entry.secret);
+      entry.owners = privateOwnersOf(repos);
+      for (const repo of repos) {
         const key = repo.fullName.toLowerCase();
         if (seen.has(key)) continue;
         seen.set(key, {
@@ -330,7 +341,7 @@ async function buildIndex() {
         });
       }
     } catch (error) {
-      failures.push(`${entry.login ?? entry.kind ?? 'token'}: ${String(error.message ?? error)}`);
+      failures.push(`${tokenLabel(entry)}: ${String(error.message ?? error)}`);
     }
   }
 
@@ -338,6 +349,7 @@ async function buildIndex() {
 
   const index = { repos: [...seen.values()], builtAt: now(), failures };
   await api.storage.local.set({ [INDEX_KEY]: index });
+  await storeTokens(tokens);
   return indexState(index);
 }
 

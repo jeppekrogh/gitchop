@@ -1,5 +1,6 @@
 import assert from 'node:assert';
-import { matchIndex, ownersFromLinks } from '../src/lib/repos.js';
+import { matchIndex, ownersFromLinks, privateOwnersOf } from '../src/lib/repos.js';
+import { tokenLabel } from '../src/lib/gist.js';
 
 assert.deepEqual(
   ownersFromLinks([
@@ -61,5 +62,32 @@ assert.deepEqual(matchIndex(index, 'e', 5), [], 'one character is not enough to 
 assert.deepEqual(matchIndex(index, 'nothinghere'), []);
 assert.deepEqual(matchIndex(undefined, 'eco'), [], 'no index is not an error');
 assert.equal(matchIndex(index, 'eco', 2).length, 2, 'the limit is respected');
+
+assert.deepEqual(
+  privateOwnersOf([
+    { fullName: 'itk-dev/economics', private: true },
+    { fullName: 'ITK-dev/eco', private: true },
+    { fullName: 'os2display/client', private: true },
+    { fullName: 'os2forms/public-thing', private: false },
+    { fullName: 'bare', private: true },
+    {},
+  ]),
+  ['itk-dev', 'os2display'],
+  'owners come first seen first, once each whatever the casing; public repositories and a name without a slash say nothing',
+);
+assert.deepEqual(
+  privateOwnersOf([{ fullName: 'itk-dev/a', private: false }, { fullName: 'os2display/b', private: false }]),
+  [],
+  'a token awaiting approval lists only public repositories, which names no owner',
+);
+assert.deepEqual(privateOwnersOf([]), []);
+assert.deepEqual(privateOwnersOf(undefined), []);
+
+assert.equal(tokenLabel({ login: 'me', kind: 'fine-grained', owners: ['itk-dev'] }), '@itk-dev', 'a fine-grained token is named for the owner it reaches');
+assert.equal(tokenLabel({ login: 'me', kind: 'classic', owners: ['me', 'itk-dev'] }), '@me', 'a classic token is the account’s whatever it reaches');
+assert.equal(tokenLabel({ login: 'me', kind: 'fine-grained', owners: [] }), '@me', 'reaching nothing falls back to who made it');
+assert.equal(tokenLabel({ login: 'me', kind: 'fine-grained', owners: null }), '@me', 'so does not knowing');
+assert.equal(tokenLabel({ login: null, kind: 'fine-grained', owners: null }), 'fine-grained');
+assert.equal(tokenLabel({ login: null, kind: null }), 'token');
 
 console.log('repos.js: all assertions passed');
